@@ -10,3 +10,16 @@
 .secondary-button svg{width:14px;height:14px;fill:none;stroke:#a99cff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 #replaceAudioInput{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 @media(max-width:700px){.heading-actions{gap:9px}.secondary-button{padding:7px 8px;font-size:9px}.live-tag{font-size:8px}}
+
+.app-credit {
+  text-align: center;
+  padding: 18px 12px;
+  font-size: 12px;
+  color: #8b93a7;
+  letter-spacing: 0.4px;
+}
+
+.app-credit span {
+  color: #c5cde0;
+  font-weight: 600;
+}
