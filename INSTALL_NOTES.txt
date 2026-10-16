@@ -1,0 +1,16 @@
+AudioScope PWA integration
+
+1. Copy manifest.json, service-worker.js, and the icons/ folder into the same folder as index.html.
+2. Add this inside <head> in index.html:
+   <link rel="manifest" href="./manifest.json">
+   <meta name="theme-color" content="#3b82f6">
+3. Add this before </body> in index.html (or in your existing script.js):
+   if ("serviceWorker" in navigator) {
+     window.addEventListener("load", () => {
+       navigator.serviceWorker.register("./service-worker.js").catch(console.error);
+     });
+   }
+4. Serve the site over HTTPS, or use http://localhost for local testing. Opening index.html directly via file:// will not enable service workers.
+5. Open the site online once, wait for the service worker to install, then reload. Test offline by disconnecting the network and reopening the installed app.
+
+If you add/rename/remove app files, update APP_FILES in service-worker.js.
