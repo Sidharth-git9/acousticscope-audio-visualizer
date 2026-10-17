@@ -1,7 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-<link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#3b82f6">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,17 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="AudioScope" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker
-        .register("./service-worker.js")
-        .catch(console.error);
-    });
-  }
-</script>
 <body>
   <div class="app-shell">
     <header class="topbar">
@@ -30,6 +23,7 @@
       </a>
       <div class="topbar-right">
         <span class="local-badge"><span class="status-dot"></span> LOCAL PROCESSING</span>
+        <button class="primary-button install-button" id="installButton" type="button">Install app</button>
         <button class="icon-button" id="aboutButton" aria-label="About AudioScope" title="About AudioScope">i</button>
       </div>
     </header>
@@ -51,23 +45,32 @@
         <div class="upload-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15.5v3A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-3"/></svg>
         </div>
-        <div class="upload-text"><strong>Drop an audio file here</strong><span>or choose a file from your device</span></div>
-        <label class="primary-button" for="audioInput">Choose audio file</label>
-        <input id="audioInput" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg,.aac,.aiff" />
-        <p class="upload-note">Audio is processed locally in your browser. No upload to a server.</p>
+        <div class="upload-text"><strong>Open audio</strong><span>Choose one audio file or open a folder of recordings.</span></div>
+        <div class="upload-actions">
+          <label class="primary-button" for="audioInput">Choose audio file</label>
+          <button class="secondary-button" id="chooseFolderButton" type="button">Choose audio folder</button>
+        </div>
+        <input id="audioInput" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg,.aac,.aiff,.opus" />
+        <p class="upload-note">Folder access and installation work best in Chrome or Edge on your deployed HTTPS site.</p>
       </section>
 
+      <input id="folderInput" type="file" webkitdirectory directory multiple accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg,.aac,.aiff,.opus" />
       <section class="workspace hidden" id="workspace">
+        <section class="folder-manager panel" aria-label="Audio file manager">
+          <div class="section-heading"><div><span class="section-index">01</span><div><h2>Audio manager</h2><p id="managerFileName">Manage files in the selected folder</p></div></div><button class="secondary-button" id="managerChooseFolder" type="button">Choose folder</button></div>
+          <div class="manager-actions">
+            <div class="manager-action-card"><span class="manager-label">PREVIOUS FILE</span><strong>Go to previous audio</strong><button class="secondary-button" id="previousTrack" type="button" disabled>Previous</button></div>
+            <div class="manager-action-card manager-current"><span class="manager-label">CURRENT FILE</span><strong id="playlistCount">0 files</strong><small>One recording is active at a time.</small></div>
+            <div class="manager-action-card"><span class="manager-label">NEXT FILE</span><strong>Go to next audio</strong><button class="secondary-button" id="nextTrack" type="button" disabled>Next</button></div>
+            <div class="manager-action-card manager-delete"><span class="manager-label">DELETE</span><strong>Remove current audio</strong><small>Disk deletion needs folder permission.</small><button class="danger-button" id="deleteTrack" type="button" disabled>Delete file</button></div>
+          </div>
+        </section>
         <section class="player-card panel">
           <div class="section-heading">
-            <div><span class="section-index">01</span><h2>Playback</h2></div>
+            <div><span class="section-index">02</span><h2>Playback</h2></div>
             <div class="heading-actions">
-              <label class="secondary-button" for="replaceAudioInput">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15.5v3A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-3"/></svg>
-                Replace audio
-              </label>
+              <label class="secondary-button" for="replaceAudioInput">Open another file</label>
               <input id="replaceAudioInput" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg,.aac,.aiff,.opus" />
-              <span class="live-tag"><span></span> SYNCED</span>
             </div>
           </div>
           <audio id="audioPlayer" preload="metadata"></audio>
@@ -98,7 +101,7 @@
 
         <section class="visual-panel panel">
           <div class="section-heading visual-heading">
-            <div><span class="section-index">02</span><div><h2>Spectrogram</h2><p>Frequency energy over time</p></div></div>
+            <div><span class="section-index">03</span><div><h2>Spectrogram</h2><p>Frequency energy over time</p></div></div>
             <div class="visual-tools">
               <label class="select-wrap"><span>Scale</span><select id="frequencyScale"><option value="log">Logarithmic</option><option value="linear">Linear</option></select></label>
               <label class="select-wrap"><span>Palette</span><select id="paletteSelect"><option value="violet">Violet</option><option value="thermal">Thermal</option><option value="mono">Monochrome</option></select></label>
@@ -116,7 +119,7 @@
 
         <section class="visual-panel panel">
           <div class="section-heading visual-heading">
-            <div><span class="section-index">03</span><div><h2>Waveform</h2><p>Amplitude over time</p></div></div>
+            <div><span class="section-index">04</span><div><h2>Waveform</h2><p>Amplitude over time</p></div></div>
             <div class="wave-legend"><span></span> Amplitude</div>
           </div>
           <div class="visual-stage waveform-stage" id="waveformStage">
@@ -128,6 +131,18 @@
           </div>
           <div class="panel-foot"><span>Peak amplitude view</span><span>Click anywhere on the visualization to seek</span></div>
         </section>
+        <section class="properties-panel panel" id="propertiesPanel">
+          <div class="section-heading"><div><span class="section-index">05</span><div><h2>Audio properties</h2><p>Analysis for the currently selected file</p></div></div></div>
+          <div class="property-grid">
+            <div class="property-card"><span>Peak frequency</span><strong id="peakFrequency">—</strong><small>Strongest non-DC FFT bin</small></div>
+            <div class="property-card"><span>Estimated SNR</span><strong id="snrValue">—</strong><small>Short-time RMS comparison</small></div>
+            <div class="property-card"><span>Peak amplitude</span><strong id="peakAmplitude">—</strong><small>Absolute sample peak</small></div>
+            <div class="property-card"><span>RMS level</span><strong id="rmsLevel">—</strong><small>Overall signal level</small></div>
+            <div class="property-card"><span>Sample rate</span><strong id="propertySampleRate">—</strong><small>Decoded audio</small></div>
+            <div class="property-card"><span>Channels</span><strong id="propertyChannels">—</strong><small>Source channel count</small></div>
+          </div>
+          <p class="property-note">SNR is an estimate from louder and quieter short-time RMS windows, not a calibrated noise measurement. Peak frequency is estimated from a windowed FFT of a segment of the selected audio.</p>
+        </section>
       </section>
       <section class="empty-state" id="emptyState">
         <div class="empty-orbit"><div class="orbit-dot"></div><div class="orbit-core">A</div></div>
@@ -135,14 +150,14 @@
         <p>Your audio stays on your device. Load a file to begin exploring its structure.</p>
       </section>
     </main>
-    <footer><span>AudioScope <span class="footer-muted">/ Browser-based audio analysis</span></span><span>DESIGNED FOR FOCUSED LISTENING BY SIDHARTH SUBRAHMANYA H</span></footer>
+    <footer><span>AudioScope <span class="footer-muted">/ Browser-based audio analysis</span><span class="creator-credit">Created by Sidharth Subrahmanya H</span></span><span>DESIGNED FOR FOCUSED LISTENING</span></footer>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <dialog id="aboutDialog">
     <div class="dialog-head"><strong>About AudioScope</strong><button class="icon-button" id="closeAbout" aria-label="Close">×</button></div>
     <p>AudioScope is a browser-based audio inspection workspace. Playback, waveform rendering, and spectrogram generation run locally on your device.</p>
     <p>For very long recordings, rendering may take a moment. Supported formats depend on the browser’s audio decoder.</p>
-    <p>Built BY SIDHARTH SUBRAHMANYA H</p>
+    <p class="about-credit">Created by <strong>Sidharth Subrahmanya H</strong>.</p>
     <button class="primary-button dialog-close" id="closeAboutBottom">Got it</button>
   </dialog>
   <script src="script.js"></script>

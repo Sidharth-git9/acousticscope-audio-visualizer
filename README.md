@@ -1,30 +1,21 @@
-# AudioScope — Audio Visual Analyzer
+# AudioScope
 
-A polished, responsive, browser-based audio analysis interface with synchronized playback, spectrogram, and waveform.
+AudioScope is a browser-based audio visualizer and analyzer with synchronized playback, spectrogram, waveform, folder playlist navigation, deletion controls, and audio-property estimates.
 
-## Features
-- Load an audio file using the file picker or drag and drop.
-- Native audio decoding and playback controls.
-- Play/pause, ±5 second skip, seek bar, and volume control.
-- Click the spectrogram or waveform to jump to that time in the audio.
-- Spectrogram palette options and logarithmic/linear frequency scale.
-- Responsive layout for desktop and mobile.
-- Local processing: audio is not sent to a server.
-- Keyboard shortcuts: Space to play/pause, Left/Right arrows to skip 5 seconds.
+**Created by Sidharth Subrahmanya H.**
 
 ## Run locally
-1. Extract the ZIP.
-2. Open `index.html` in a modern browser.
-3. Choose an audio file.
 
-For the most consistent browser behavior, you can also serve the folder with a local static server, e.g. from the folder run `python -m http.server 8000`, then visit `http://localhost:8000`.
+Use a local web server (for example, `python -m http.server 8000`) and open `http://localhost:8000`. Folder access and PWA installation require a secure context: HTTPS or localhost.
 
-## Files
-- `index.html` — page structure and controls
-- `style.css` — visual styling and responsive layout
-- `script.js` — file loading, decoding, spectrogram/waveform drawing, synchronized seeking
+## Install as a web app
 
-## Notes
-- Supported formats depend on the browser's built-in decoder.
-- Long recordings and high-resolution spectrograms may take a short time to render.
-- The spectrogram uses a 2048-sample FFT with a 512-sample hop and displays frequency energy over time.
+Deploy the complete folder to a static HTTPS host. Open it in Chrome or Edge and choose **Install app**. If the install prompt is not available, use the browser's menu and select **Install AudioScope** or **Install page as app**. The app manifest and service worker are included.
+
+## Folder access and deletion
+
+Use **Choose audio folder**. On browsers supporting the File System Access API, grant read/write permission to enable permanent deletion. The standard folder input fallback can load files and navigate the session playlist but cannot permanently delete files from disk.
+
+## Audio properties
+
+Peak frequency and SNR are estimates. SNR uses short-time RMS comparison and is not a calibrated noise measurement.

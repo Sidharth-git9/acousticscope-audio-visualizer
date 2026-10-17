@@ -1,16 +1,7 @@
-AudioScope PWA integration
+AudioScope install and folder access
 
-1. Copy manifest.json, service-worker.js, and the icons/ folder into the same folder as index.html.
-2. Add this inside <head> in index.html:
-   <link rel="manifest" href="./manifest.json">
-   <meta name="theme-color" content="#3b82f6">
-3. Add this before </body> in index.html (or in your existing script.js):
-   if ("serviceWorker" in navigator) {
-     window.addEventListener("load", () => {
-       navigator.serviceWorker.register("./service-worker.js").catch(console.error);
-     });
-   }
-4. Serve the site over HTTPS, or use http://localhost for local testing. Opening index.html directly via file:// will not enable service workers.
-5. Open the site online once, wait for the service worker to install, then reload. Test offline by disconnecting the network and reopening the installed app.
-
-If you add/rename/remove app files, update APP_FILES in service-worker.js.
+1. Deploy the complete folder to a static HTTPS host such as Cloudflare Pages or GitHub Pages. Do not open index.html directly as a file.
+2. Open the deployed site in a current version of Chrome or Edge.
+3. Use the Install app button if the browser offers installation. If it does not, use the browser menu and select Install AudioScope / Install page as app.
+4. Folder-level permanent deletion requires the browser's directory picker and read/write permission. If using the fallback folder picker, Delete file only removes the track from the current session.
+5. After updating a deployment, hard refresh once if an old cached version remains.
