@@ -60,7 +60,7 @@
           <div class="section-heading"><div><span class="section-index">01</span><div><h2>Audio manager</h2><p id="managerFileName">Manage files in the selected folder</p></div></div><button class="secondary-button" id="managerChooseFolder" type="button">Choose folder</button></div>
           <div class="manager-actions">
             <div class="manager-action-card"><span class="manager-label">PREVIOUS FILE</span><strong>Go to previous audio</strong><button class="secondary-button" id="previousTrack" type="button" disabled>Previous</button></div>
-            <div class="manager-action-card manager-current"><span class="manager-label">CURRENT FILE</span><strong id="playlistCount">0 files</strong><small>One recording is active at a time.</small></div>
+            <div class="manager-action-card manager-current"><span class="manager-label">CURRENT FILE</span><strong id="playlistCount">0 files</strong><small>Choose a recording to load only that file.</small><label class="track-select-label" for="trackSelect">SELECT AUDIO</label><select id="trackSelect" class="track-select" aria-label="Select audio file" disabled><option value="">Choose a file</option></select></div>
             <div class="manager-action-card"><span class="manager-label">NEXT FILE</span><strong>Go to next audio</strong><button class="secondary-button" id="nextTrack" type="button" disabled>Next</button></div>
             <div class="manager-action-card manager-delete"><span class="manager-label">DELETE</span><strong>Remove current audio</strong><small>Disk deletion needs folder permission.</small><button class="danger-button" id="deleteTrack" type="button" disabled>Delete file</button></div>
           </div>

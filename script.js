@@ -27,6 +27,7 @@
   let toastTimer = null;
   let currentFile = null;
   let rendering = false;
+  let loadRequestId = 0;
   let playlist = [];
   let playlistIndex = -1;
   let directoryHandle = null;
@@ -36,12 +37,28 @@
   const previousTrackButton = $("previousTrack");
   const nextTrackButton = $("nextTrack");
   const playlistCount = $("playlistCount");
+  const trackSelect = $("trackSelect");
   const AUDIO_EXTENSIONS = /\.(wav|mp3|m4a|flac|ogg|aac|aiff|opus|weba)$/i;
   function updatePlaylistUI() {
     const hasPlaylist = playlist.length > 0;
     if (previousTrackButton) previousTrackButton.disabled = !hasPlaylist || playlistIndex <= 0;
     if (nextTrackButton) nextTrackButton.disabled = !hasPlaylist || playlistIndex >= playlist.length - 1;
     if (playlistCount) playlistCount.textContent = hasPlaylist ? `${playlistIndex + 1} of ${playlist.length} files` : "No files loaded";
+    if (trackSelect) {
+      trackSelect.disabled = !hasPlaylist;
+      trackSelect.innerHTML = "";
+      if (hasPlaylist) {
+        playlist.forEach((file, index) => {
+          const option = document.createElement("option");
+          option.value = String(index);
+          option.textContent = `${String(index + 1).padStart(2, "0")} — ${file.name}`;
+          trackSelect.appendChild(option);
+        });
+        trackSelect.value = String(playlistIndex);
+      } else {
+        const option = document.createElement("option"); option.value = ""; option.textContent = "Choose a file"; trackSelect.appendChild(option);
+      }
+    }
     const active = hasPlaylist ? playlist[playlistIndex] : null;
     const managerName = $("managerFileName");
     if (managerName) managerName.textContent = active ? active.name : "Manage files in the selected folder";
@@ -483,6 +500,10 @@
       loadPlaylistTrack(0);
     }
     folderInput.value = "";
+  });
+  trackSelect?.addEventListener("change", e => {
+    const index = Number.parseInt(e.target.value, 10);
+    if (Number.isInteger(index)) loadPlaylistTrack(index);
   });
   previousTrackButton?.addEventListener("click", () => loadPlaylistTrack(playlistIndex - 1));
   nextTrackButton?.addEventListener("click", () => loadPlaylistTrack(playlistIndex + 1));
