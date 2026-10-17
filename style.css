@@ -47,3 +47,171 @@ body{background:var(--bg);color:var(--text);font-size:14px}.app-shell{max-width:
 .track-select{display:block;width:100%;max-width:100%;margin-top:6px;padding:9px 10px;border:1px solid #394563;border-radius:7px;background:#171f35;color:#d8e0f5;font-size:11px;outline:none}
 .track-select:disabled{opacity:.45}
 .manager-current{min-width:180px}
+
+/* Compact navigation and clear, permission-gated folder cleanup */
+.manager-actions{grid-template-columns:minmax(0,1fr) minmax(260px,2fr) minmax(0,1fr) minmax(0,1.2fr);gap:8px;padding:12px}
+.manager-action-card{gap:6px;padding:11px}
+.manager-action-card>strong{font-size:12px}
+.manager-action-card small{min-height:0;font-size:10px}
+.manager-action-card .secondary-button{padding:6px 9px;font-size:10px}
+.manager-current strong{font-size:17px}
+.manager-current .track-select{padding:7px 9px}
+.cleanup-tools{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border-top:1px solid #e8ebef;background:#fbfcfd}
+.cleanup-copy{display:flex;flex-direction:column;gap:4px;min-width:180px}
+.cleanup-copy strong{font-size:12px}
+.cleanup-copy span{font-size:10px;line-height:1.5;color:#68717d}
+.cleanup-actions{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.compact-button{padding:7px 9px;font-size:10px;white-space:nowrap}
+.cleanup-results{padding:10px 16px;border-top:1px solid #e8ebef;font-size:10px;line-height:1.7;color:#68717d;overflow-wrap:anywhere}
+.cleanup-results.hidden{display:none!important}
+#propertiesPanel{order:0}
+.workspace{gap:14px}
+@media(max-width:900px){.manager-actions{grid-template-columns:1fr 1.5fr 1fr 1fr}.cleanup-tools{align-items:flex-start;flex-direction:column}.cleanup-actions{justify-content:flex-start}}
+@media(max-width:700px){.manager-actions{grid-template-columns:1fr 1fr}.manager-current{grid-column:1/-1;grid-row:1}.cleanup-actions{width:100%}.cleanup-actions button{flex:1}.manager-action-card{padding:10px}.manager-action-card .secondary-button{margin-top:2px}}
+@media(max-width:430px){.manager-actions{grid-template-columns:1fr 1fr}.cleanup-actions{display:grid;grid-template-columns:1fr}.cleanup-tools{padding:12px}}
+
+/* Focused workflow refresh: playback first, then a compact searchable library. */
+.workspace{gap:12px}
+.player-card{order:1}
+.folder-manager{order:2}
+#propertiesPanel{order:0}
+.visual-panel{order:3}
+.folder-manager .section-heading{gap:12px}
+.folder-manager .section-heading>div:first-child{min-width:0}
+.manager-actions{grid-template-columns:minmax(100px,.7fr) minmax(280px,2.5fr) minmax(100px,.7fr) minmax(130px,.9fr);gap:10px;padding:14px}
+.manager-action-card{border-color:#e6e9ee;border-radius:8px;box-shadow:none;min-width:0}
+.manager-action-card .secondary-button,.manager-action-card .danger-button{min-height:32px}
+.manager-current{background:#f7f9fc;border-color:#dce4f1}
+.manager-current>strong{font-size:16px!important;line-height:1.35;overflow-wrap:anywhere}
+.track-select-label{display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:#6b7480;font-size:9px}
+.track-select,.track-search{width:100%;min-width:0;margin-top:5px;padding:9px 10px;border:1px solid #d6dce5;border-radius:6px;background:#fff;color:#27313d;font-size:11px;outline:none}
+.track-search:focus,.track-select:focus{border-color:#7d9ee3;box-shadow:0 0 0 3px #3568d414}
+.track-select option{white-space:normal}
+.track-select:disabled,.track-search:disabled{background:#f4f6f8;color:#8a929d}
+.cleanup-tools{background:#fafbfc}
+.cleanup-copy{min-width:0}
+@media(max-width:900px){.manager-actions{grid-template-columns:minmax(90px,.7fr) minmax(240px,2fr) minmax(90px,.7fr)}.manager-delete{grid-column:1/-1;display:flex;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap}.manager-delete small{margin-right:auto;padding:0 12px}}
+@media(max-width:600px){.manager-actions{grid-template-columns:1fr 1fr;padding:10px}.manager-current{grid-column:1/-1;grid-row:auto}.manager-delete{grid-column:1/-1;display:flex;flex-direction:column;align-items:flex-start}.manager-delete small{padding:0}.folder-manager .section-heading{align-items:flex-start}.folder-manager .section-heading .secondary-button{flex-shrink:0}.track-select,.track-search{font-size:12px}.cleanup-actions{display:grid;grid-template-columns:1fr 1fr}.cleanup-actions button:last-child{grid-column:1/-1}}
+
+/* Simplified library controls: one search-and-select row, compact navigation. */
+.library-toolbar{display:grid;grid-template-columns:minmax(125px,.7fr) minmax(180px,1.1fr) minmax(250px,2fr) auto auto;align-items:center;gap:9px;padding:14px 16px}
+.library-count{display:flex;flex-direction:column;gap:4px;min-width:0}
+.library-count strong{font-size:12px;color:#20242b}
+.library-count span{font-size:10px;color:#68717d}
+.track-search,.track-select{width:100%;min-width:0;padding:9px 10px;border:1px solid #d6dce5;border-radius:6px;background:#fff;color:#27313d;font-size:11px;outline:none}
+.track-search:focus,.track-select:focus{border-color:#7d9ee3;box-shadow:0 0 0 3px #3568d414}
+.track-search:disabled,.track-select:disabled{background:#f4f6f8;color:#8a929d}
+.track-nav{display:flex;gap:5px;white-space:nowrap}
+.compact-button{padding:7px 9px;font-size:10px;white-space:nowrap;min-height:31px}
+.cleanup-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px;border-top:1px solid #e8ebef;background:#fafbfc}
+.cleanup-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cleanup-copy strong{font-size:11px;color:#303844}
+.cleanup-copy span{font-size:10px;line-height:1.45;color:#68717d}
+.cleanup-actions{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.cleanup-results{padding:9px 16px;border-top:1px solid #e8ebef;font-size:10px;line-height:1.6;color:#68717d;overflow-wrap:anywhere}
+@media(max-width:900px){.library-toolbar{grid-template-columns:minmax(110px,.7fr) minmax(160px,1fr) minmax(210px,1.5fr);}.track-nav{grid-column:2;grid-row:2}.library-toolbar>#deleteTrack{grid-column:3;grid-row:2;justify-self:start}.cleanup-tools{align-items:flex-start;flex-direction:column}.cleanup-actions{justify-content:flex-start}}
+@media(max-width:600px){.library-toolbar{grid-template-columns:1fr 1fr;padding:11px;gap:8px}.library-count{grid-column:1/-1}.track-search,.track-select{grid-column:1/-1}.track-nav{grid-column:1;grid-row:auto}.library-toolbar>#deleteTrack{grid-column:2;grid-row:auto;justify-self:stretch}.cleanup-tools{padding:11px}.cleanup-actions{display:flex;width:100%;justify-content:flex-start}.cleanup-actions button{flex:1}.folder-manager .section-heading{align-items:flex-start;padding:14px}.folder-manager .section-heading .secondary-button{flex-shrink:0}}
+
+/* Folder dropdown and balanced library controls */
+.library-toolbar{grid-template-columns:minmax(115px,.72fr) minmax(135px,1fr) minmax(150px,1.1fr) minmax(210px,1.6fr) auto auto;align-items:center}
+.subfolder-select{grid-column:auto}
+.track-select,.track-search{min-height:36px}
+.track-select{overflow:hidden;text-overflow:ellipsis}
+.section-index{flex:0 0 auto}
+.section-heading>div:first-child{min-width:0}
+.section-heading h2,.section-heading p{overflow-wrap:anywhere}
+@media(max-width:1050px){.library-toolbar{grid-template-columns:minmax(100px,.7fr) minmax(130px,1fr) minmax(145px,1fr)}.track-nav{grid-column:2;grid-row:2}.library-toolbar>#deleteTrack{grid-column:3;grid-row:2;justify-self:start}}
+@media(max-width:600px){.library-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.library-count{grid-column:1/-1}.subfolder-select,.track-search,.track-select{grid-column:1/-1}.track-nav{grid-column:1;grid-row:auto}.library-toolbar>#deleteTrack{grid-column:2;grid-row:auto;justify-self:stretch}.cleanup-actions{flex-wrap:wrap}.cleanup-actions button{min-width:0}}
+
+
+/* Final polish: explicit, aligned folder and recording controls */
+.library-toolbar{
+  grid-template-columns:minmax(118px,.72fr) minmax(155px,1fr) minmax(155px,1fr) minmax(220px,1.6fr) auto auto;
+  align-items:end;
+  gap:12px;
+  padding:16px;
+}
+.library-count{align-self:center}
+.library-count strong{color:var(--text);font-size:12px;line-height:1.4}
+.library-count span{color:var(--muted);font-size:10px;line-height:1.4}
+.library-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.library-field label{font:500 10px var(--mono);letter-spacing:.35px;color:var(--muted);line-height:1.3}
+.library-field .track-select,.library-field .track-search{
+  display:block;
+  width:100%;
+  min-width:0;
+  height:39px;
+  min-height:39px;
+  margin:0;
+  padding:0 11px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel2);
+  color:var(--text);
+  font:11px var(--font);
+  box-shadow:none;
+}
+.library-field .track-select{padding-right:30px;cursor:pointer}
+.library-field .track-select:focus,.library-field .track-search:focus{
+  outline:2px solid #9b8cff55;
+  outline-offset:1px;
+  border-color:var(--accent);
+}
+.library-field .track-select:disabled,.library-field .track-search:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  background:#111827;
+}
+.library-field .track-search::placeholder{color:var(--muted2)}
+.track-nav{align-self:end;gap:6px}
+.compact-button{min-height:39px;border-radius:8px;font-size:10px}
+.library-toolbar>#deleteTrack{align-self:end;min-height:39px}
+.cleanup-tools{background:var(--panel2);border-color:var(--line)}
+.cleanup-copy strong{color:var(--text)}
+.cleanup-copy span,.cleanup-results{color:var(--muted)}
+.cleanup-results{border-color:var(--line)}
+@media(max-width:1120px){
+  .library-toolbar{grid-template-columns:minmax(120px,.8fr) minmax(150px,1fr) minmax(150px,1fr);align-items:end}
+  .library-count{grid-column:1/-1}
+  .folder-field{grid-column:1}
+  .search-field{grid-column:2}
+  .recording-field{grid-column:3}
+  .track-nav{grid-column:1/2;grid-row:auto}
+  .library-toolbar>#deleteTrack{grid-column:2/4;grid-row:auto;justify-self:start}
+}
+@media(max-width:650px){
+  .library-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:13px;gap:11px}
+  .library-count{grid-column:1/-1}
+  .folder-field,.search-field,.recording-field{grid-column:1/-1}
+  .track-nav{grid-column:1;grid-row:auto;align-self:stretch}
+  .track-nav button{flex:1}
+  .library-toolbar>#deleteTrack{grid-column:2;grid-row:auto;justify-self:stretch;white-space:normal}
+  .library-field .track-select,.library-field .track-search{font-size:12px}
+  .cleanup-tools{gap:10px}
+}
+@media(max-width:360px){
+  .track-nav{flex-direction:column}
+  .library-toolbar>#deleteTrack{grid-column:1/-1}
+}
+
+
+/* Combined searchable subfolder combobox */
+.folder-field{min-width:0}
+.subfolder-select{display:block;width:100%;min-width:0;min-height:36px;padding:9px 30px 9px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subfolder-select::placeholder{color:#7b8491;opacity:1}
+.subfolder-select:disabled{background:#f4f6f8;color:#8a929d}
+@media(max-width:600px){.subfolder-select{font-size:12px}}
+
+/* Searchable subfolder combo: typing and browsing use one control. */
+.folder-combobox{position:relative;display:flex;width:100%;min-width:0}
+.folder-combobox .subfolder-select{padding-right:38px!important;border-top-right-radius:8px;border-bottom-right-radius:8px}
+.folder-dropdown-toggle{position:absolute;right:1px;top:1px;bottom:1px;width:34px;border:0;border-left:1px solid var(--line);border-radius:0 7px 7px 0;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;font-size:15px}
+.folder-dropdown-toggle:hover,.folder-dropdown-toggle[aria-expanded="true"]{background:var(--panel);color:var(--text)}
+.folder-dropdown-toggle:disabled{cursor:not-allowed;opacity:.45}
+.folder-options{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 5px);max-height:260px;overflow:auto;padding:5px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);box-shadow:0 12px 30px #0002}
+.folder-options.hidden{display:none}
+.folder-option{display:block;width:100%;padding:9px 10px;border:0;border-radius:6px;background:transparent;color:var(--text);text-align:left;font:11px var(--font);overflow-wrap:anywhere;cursor:pointer}
+.folder-option:hover,.folder-option:focus-visible{background:var(--accent-soft,#eef2ff);outline:none}
+.folder-option[hidden]{display:none}
+.folder-option[data-folder=""]{color:var(--muted);border-bottom:1px solid var(--line);border-radius:0;margin-bottom:3px}
+.folder-combobox:focus-within .subfolder-select{border-color:var(--accent)}

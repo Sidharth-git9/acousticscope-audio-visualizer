@@ -33,37 +33,91 @@
   let directoryHandle = null;
   let playlistEntries = [];
   let playlistSource = "files";
+  let currentAudioInvalid = false;
+  let emptyFiles = [];
+  let emptyFolders = [];
   const folderInput = $("folderInput");
   const previousTrackButton = $("previousTrack");
   const nextTrackButton = $("nextTrack");
   const playlistCount = $("playlistCount");
   const trackSelect = $("trackSelect");
+  const subfolderSelect = $("subfolderSelect");
+  const filteredCount = $("filteredCount");
   const AUDIO_EXTENSIONS = /\.(wav|mp3|m4a|flac|ogg|aac|aiff|opus|weba)$/i;
+  function entryPath(index) {
+    const entry = playlistEntries[index];
+    return (entry && entry.relativePath) || (playlist[index] && (playlist[index].webkitRelativePath || playlist[index].name)) || "";
+  }
+  function visiblePlaylistIndices() {
+    const typedValue = (subfolderSelect?.value || "").trim();
+    const knownFolder = folderPaths.has(typedValue);
+    const query = typedValue.toLocaleLowerCase();
+    const indices = [];
+    playlist.forEach((file, index) => {
+      const path = entryPath(index);
+      const inFolder = !typedValue || (knownFolder && (path.startsWith(typedValue + "/") || path === typedValue));
+      const matchesSearch = !typedValue || knownFolder || path.toLocaleLowerCase().includes(query);
+      if (inFolder && matchesSearch) indices.push(index);
+    });
+    return indices;
+  }
+  const folderPaths = new Set();
+  function updateSubfolderOptions() {
+    if (!subfolderSelect) return;
+    const previous = subfolderSelect.value;
+    const folders = new Set();
+    playlist.forEach((_, index) => {
+      const parts = entryPath(index).split("/");
+      parts.pop();
+      for (let i = 1; i <= parts.length; i++) folders.add(parts.slice(0, i).join("/"));
+    });
+    folderPaths.clear();
+    folders.forEach(path => folderPaths.add(path));
+    subfolderSelect.innerHTML = "";
+    subfolderSelect.appendChild(new Option("All folders", ""));
+    [...folders].sort((a,b) => a.localeCompare(b, undefined, { numeric:true, sensitivity:"base" }))
+      .forEach(path => subfolderSelect.appendChild(new Option(path, path)));
+    subfolderSelect.disabled = playlist.length === 0;
+    subfolderSelect.value = previous && folders.has(previous) ? previous : "";
+  }
   function updatePlaylistUI() {
     const hasPlaylist = playlist.length > 0;
-    if (previousTrackButton) previousTrackButton.disabled = !hasPlaylist || playlistIndex <= 0;
-    if (nextTrackButton) nextTrackButton.disabled = !hasPlaylist || playlistIndex >= playlist.length - 1;
-    if (playlistCount) playlistCount.textContent = hasPlaylist ? `${playlistIndex + 1} of ${playlist.length} files` : "No files loaded";
+    updateSubfolderOptions();
+    const visible = visiblePlaylistIndices();
+    const visiblePosition = visible.indexOf(playlistIndex);
+    if (previousTrackButton) previousTrackButton.disabled = visiblePosition <= 0;
+    if (nextTrackButton) nextTrackButton.disabled = visiblePosition < 0 || visiblePosition >= visible.length - 1;
+    if (playlistCount) playlistCount.textContent = !hasPlaylist ? "No files loaded" : (visiblePosition >= 0 ? `${visiblePosition + 1} of ${visible.length} shown` : `${playlist.length} files loaded`);
     if (trackSelect) {
-      trackSelect.disabled = !hasPlaylist;
+      trackSelect.disabled = !hasPlaylist || visible.length === 0;
       trackSelect.innerHTML = "";
-      if (hasPlaylist) {
-        playlist.forEach((file, index) => {
+      if (filteredCount) filteredCount.textContent = hasPlaylist ? `${visible.length} shown` : "";
+      if (visible.length) {
+        visible.forEach(index => {
           const option = document.createElement("option");
           option.value = String(index);
-          option.textContent = `${String(index + 1).padStart(2, "0")} — ${file.name}`;
+          const path = entryPath(index);
+          option.textContent = path;
           trackSelect.appendChild(option);
         });
-        trackSelect.value = String(playlistIndex);
+        trackSelect.value = visible.includes(playlistIndex) ? String(playlistIndex) : "";
+        if (!trackSelect.value) trackSelect.insertBefore(new Option("Choose a recording…", ""), trackSelect.firstChild);
       } else {
-        const option = document.createElement("option"); option.value = ""; option.textContent = "Choose a file"; trackSelect.appendChild(option);
+        const option = document.createElement("option"); option.value = ""; option.textContent = hasPlaylist ? "No recordings in this folder" : "Choose a folder first"; trackSelect.appendChild(option);
       }
     }
     const active = hasPlaylist ? playlist[playlistIndex] : null;
     const managerName = $("managerFileName");
-    if (managerName) managerName.textContent = active ? active.name : "Manage files in the selected folder";
+    if (managerName) managerName.textContent = active ? entryPath(playlistIndex) : "Open a folder to browse recordings and subfolders";
     const deleteButton = $("deleteTrack");
-    if (deleteButton) deleteButton.disabled = !hasPlaylist;
+    const currentEntry = hasPlaylist ? playlistEntries[playlistIndex] : null;
+    const canDeleteInvalidFromDisk = playlistSource === "directory" && !!directoryHandle && !!currentEntry;
+    if (deleteButton) {
+      const showDelete = currentAudioInvalid && canDeleteInvalidFromDisk;
+      deleteButton.classList.toggle("hidden", !showDelete);
+      deleteButton.disabled = !showDelete;
+      deleteButton.title = showDelete ? "Permanently delete this invalid audio file" : "Shown only when the selected audio has no usable signal metrics and folder permission is available";
+    }
   }
   function isAudioFile(file) {
     return !!file && ((file.type || "").startsWith("audio/") || AUDIO_EXTENSIONS.test(file.name || ""));
@@ -344,7 +398,7 @@
       }
     }
     const rms = Math.sqrt(sumSquares / Math.max(1, samples));
-    const db = v => (20 * Math.log10(Math.max(v, 1e-9))).toFixed(1);
+    const db = v => v <= 0 ? "−∞" : (20 * Math.log10(v)).toFixed(1);
     const frameSize = Math.max(1, Math.floor(buffer.sampleRate * 0.1));
     const levels = [];
     for (let start = 0; start < mono.length; start += frameSize) {
@@ -384,33 +438,89 @@
     }
     $("peakFrequency").textContent = peakFrequency;
     $("snrValue").textContent = snr;
-    $("peakAmplitude").textContent = `${peak.toFixed(4)} (${db(peak)} dBFS)`;
-    $("rmsLevel").textContent = `${rms.toFixed(4)} (${db(rms)} dBFS)`;
+    $("peakAmplitude").textContent = `${peak.toFixed(6)} (${db(peak)} dBFS)`;
+    $("rmsLevel").textContent = `${rms.toFixed(6)} (${db(rms)} dBFS)`;
     $("propertySampleRate").textContent = `${(buffer.sampleRate / 1000).toFixed(1)} kHz`;
     $("propertyChannels").textContent = String(channelCount);
+    // Treat audio as empty-like only when every core signal indicator is absent/zero.
+    // SNR alone may be unavailable for valid short or steady recordings.
+    currentAudioInvalid = mono.length === 0 || (peak <= 1e-9 && rms <= 1e-9 && peakFrequency === "Not available" && snr === "Not available");
+    updatePlaylistUI();
+  }
+  async function walkDirectory(dirHandle, relativePath = "") {
+    const files = []; const folders = []; let containsAnyFile = false;
+    for await (const [name, child] of dirHandle.entries()) {
+      const path = relativePath ? `${relativePath}/${name}` : name;
+      if (child.kind === "directory") {
+        const result = await walkDirectory(child, path);
+        files.push(...result.files); folders.push(...result.folders);
+        if (result.containsAnyFile) containsAnyFile = true;
+        else folders.push({ name, relativePath: path, handle: child, parentHandle: dirHandle });
+      } else if (child.kind === "file") {
+        containsAnyFile = true;
+        try {
+          const file = await child.getFile();
+          if (isAudioFile(file)) files.push({ name: file.name, relativePath: path, file, handle: child, parentHandle: dirHandle, size: file.size });
+          if (file.size === 0) emptyFiles.push({ name, relativePath: path, handle: child, parentHandle: dirHandle });
+        } catch (err) { console.warn("Skipping inaccessible file", path, err); }
+      }
+    }
+    return { files, folders, containsAnyFile };
   }
   async function chooseFolderWithPermission() {
     if (!window.showDirectoryPicker) { folderInput.click(); return; }
     try {
       const handle = await window.showDirectoryPicker({ mode: "readwrite" });
-      const entries = [];
-      for await (const [name, entryHandle] of handle.entries()) {
-        if (entryHandle.kind !== "file" || !AUDIO_EXTENSIONS.test(name)) continue;
-        try {
-          const file = await entryHandle.getFile();
-          if (isAudioFile(file)) entries.push({ name, file, handle: entryHandle });
-        } catch (err) { console.warn("Skipping inaccessible file", name, err); }
-      }
-      entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
-      if (!entries.length) { showToast("No supported audio files were found in that folder."); return; }
-      directoryHandle = handle; playlistEntries = entries; playlistSource = "directory";
-      playlist = entries.map(item => item.file); playlistIndex = 0; updatePlaylistUI();
-      await loadPlaylistTrack(0);
-      showToast(`Opened ${entries.length} audio file${entries.length === 1 ? "" : "s"}. Permanent file deletion is enabled.`);
+      emptyFiles = []; emptyFolders = [];
+      const result = await walkDirectory(handle);
+      const entries = result.files.sort((a, b) => a.relativePath.localeCompare(b.relativePath, undefined, { numeric: true, sensitivity: "base" }));
+      directoryHandle = handle; playlistEntries = entries; playlistSource = "directory"; emptyFolders = result.folders;
+      playlist = entries.map(item => item.file); playlistIndex = entries.length ? 0 : -1; updatePlaylistUI();
+      if (entries.length) await loadPlaylistTrack(0);
+      else { workspace.classList.remove("hidden"); dropZone.classList.add("hidden"); showToast("No supported audio files found. You can scan and remove empty files or folders."); }
+      updateCleanupUI();
+      showToast(`Scanned folder and subfolders: ${entries.length} audio files found.`);
     } catch (err) {
       if (err && err.name !== "AbortError") { console.error(err); showToast("Could not access folder. Try Chrome or Edge over HTTPS or localhost."); }
     }
   }
+  function updateCleanupUI() {
+    const summary = $("cleanupSummary");
+    if (summary) summary.textContent = `${emptyFiles.length} zero-byte file(s), ${emptyFolders.length} folder(s) with no files found. Disk cleanup requires folder permission.`;
+    $("deleteEmptyFiles").disabled = !directoryHandle || !emptyFiles.length;
+    $("deleteEmptyFiles").classList.toggle("hidden", !emptyFiles.length || !directoryHandle);
+    $("deleteEmptyFolders").disabled = !directoryHandle || !emptyFolders.length;
+    $("deleteEmptyFolders").classList.toggle("hidden", !emptyFolders.length || !directoryHandle);
+    const results = $("cleanupResults");
+    if (results) {
+      results.classList.toggle("hidden", !emptyFiles.length && !emptyFolders.length);
+      results.textContent = [...emptyFiles.map(x => `Empty file: ${x.relativePath}`), ...emptyFolders.map(x => `Empty folder: ${x.relativePath}`)].join(" · ");
+    }
+  }
+  $("scanCleanup")?.addEventListener("click", async () => {
+    if (!directoryHandle) { showToast("Choose a folder using the folder picker to scan and manage disk files."); return; }
+    try {
+      emptyFiles = []; emptyFolders = [];
+      const result = await walkDirectory(directoryHandle);
+      emptyFolders = result.folders;
+      updateCleanupUI();
+      showToast(`Scan complete: ${emptyFiles.length} empty files and ${emptyFolders.length} empty folders.`);
+    } catch (err) { console.error(err); showToast("Could not scan the selected folder."); }
+  });
+  $("deleteEmptyFiles")?.addEventListener("click", async () => {
+    if (!directoryHandle || !emptyFiles.length) return;
+    if (!confirm(`Permanently delete ${emptyFiles.length} zero-byte file(s)? This cannot be undone.`)) return;
+    let removed = 0;
+    for (const item of [...emptyFiles]) { try { await item.parentHandle.removeEntry(item.name); removed++; } catch (err) { console.warn("Could not remove", item.relativePath, err); } }
+    emptyFiles = []; updateCleanupUI(); showToast(`Deleted ${removed} empty file(s).`);
+  });
+  $("deleteEmptyFolders")?.addEventListener("click", async () => {
+    if (!directoryHandle || !emptyFolders.length) return;
+    if (!confirm(`Permanently delete ${emptyFolders.length} empty folder(s)? This cannot be undone.`)) return;
+    let removed = 0;
+    for (const item of [...emptyFolders].sort((a,b) => b.relativePath.split("/").length - a.relativePath.split("/").length)) { try { await item.parentHandle.removeEntry(item.name); removed++; } catch (err) { console.warn("Could not remove", item.relativePath, err); } }
+    emptyFolders = []; updateCleanupUI(); showToast(`Deleted ${removed} empty folder(s).`);
+  });
 
   async function decodeAudio(file) {
     if (!window.AudioContext && !window.webkitAudioContext) throw new Error("This browser does not support Web Audio.");
@@ -426,6 +536,8 @@
     }
     if (rendering) showToast("Preparing audio…");
     currentFile = file;
+    currentAudioInvalid = file.size === 0;
+    updatePlaylistUI();
     dropZone.classList.add("hidden");
     emptyState.classList.add("hidden");
     workspace.classList.remove("hidden");
@@ -462,6 +574,8 @@
       showToast("Audio loaded. Click either visualization to seek.");
     } catch (err) {
       console.error(err);
+      currentAudioInvalid = true;
+      updatePlaylistUI();
       showToast(`Could not decode this audio: ${err.message || "unsupported format"}`);
       $("spectrogramOverlay").querySelector("span").textContent = "Unable to decode this audio file";
       $("waveformOverlay").querySelector("span").textContent = "Unable to decode this audio file";
@@ -484,7 +598,7 @@
   });
   folderInput.addEventListener("change", e => {
     directoryHandle = null; playlistEntries = []; playlistSource = "files";
-    const selected = Array.from(e.target.files || []).filter(isAudioFile);
+    const selected = Array.from(e.target.files || []).filter(file => isAudioFile(file));
     selected.sort((a, b) => {
       const aPath = a.webkitRelativePath || a.name;
       const bPath = b.webkitRelativePath || b.name;
@@ -505,26 +619,36 @@
     const index = Number.parseInt(e.target.value, 10);
     if (Number.isInteger(index)) loadPlaylistTrack(index);
   });
-  previousTrackButton?.addEventListener("click", () => loadPlaylistTrack(playlistIndex - 1));
-  nextTrackButton?.addEventListener("click", () => loadPlaylistTrack(playlistIndex + 1));
+  subfolderSelect?.addEventListener("change", () => {
+    updatePlaylistUI();
+    const visible = visiblePlaylistIndices();
+    if (visible.length && !visible.includes(playlistIndex)) loadPlaylistTrack(visible[0]);
+  });
+  previousTrackButton?.addEventListener("click", () => {
+    const visible = visiblePlaylistIndices(); const pos = visible.indexOf(playlistIndex);
+    if (pos > 0) loadPlaylistTrack(visible[pos - 1]);
+  });
+  nextTrackButton?.addEventListener("click", () => {
+    const visible = visiblePlaylistIndices(); const pos = visible.indexOf(playlistIndex);
+    if (pos >= 0 && pos < visible.length - 1) loadPlaylistTrack(visible[pos + 1]);
+  });
   $("chooseFolderButton")?.addEventListener("click", chooseFolderWithPermission);
   $("managerChooseFolder")?.addEventListener("click", chooseFolderWithPermission);
   $("deleteTrack").addEventListener("click", async () => {
-    if (playlistIndex < 0 || !playlist.length) return;
+    if (playlistIndex < 0 || !playlist.length || !currentAudioInvalid) return;
     const file = playlist[playlistIndex];
     const canDeleteFromDisk = playlistSource === "directory" && directoryHandle && playlistEntries[playlistIndex];
-    const prompt = canDeleteFromDisk
-      ? `Permanently delete "${file.name}" from the selected folder? This cannot be undone.`
-      : `Remove "${file.name}" from this session's list? The original file will remain on disk because direct folder permission was not granted.`;
+    if (!canDeleteFromDisk) { showToast("Folder write permission is required to delete files from disk."); return; }
+    const prompt = `This audio appears empty or has no usable signal metrics. Permanently delete "${file.name}" from disk? This cannot be undone.`;
     if (!confirm(prompt)) return;
     audio.pause();
     try {
-      if (canDeleteFromDisk) await directoryHandle.removeEntry(playlistEntries[playlistIndex].name);
+      if (canDeleteFromDisk) await playlistEntries[playlistIndex].parentHandle.removeEntry(playlistEntries[playlistIndex].name);
       playlist.splice(playlistIndex, 1);
       if (playlistEntries.length) playlistEntries.splice(playlistIndex, 1);
       if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
       if (!playlist.length) {
-        playlistIndex = -1; currentFile = null; decodedBuffer = null; specImage = null; wavePeaks = null;
+        playlistIndex = -1; currentFile = null; decodedBuffer = null; specImage = null; wavePeaks = null; currentAudioInvalid = false;
         audio.removeAttribute("src"); audio.load(); workspace.classList.add("hidden"); dropZone.classList.remove("hidden"); emptyState.classList.remove("hidden");
         $("fileSummary").classList.add("hidden");
         ["peakFrequency","snrValue","peakAmplitude","rmsLevel","propertySampleRate","propertyChannels"].forEach(id => $(id).textContent = "—");
@@ -532,7 +656,7 @@
       }
       playlistIndex = Math.min(playlistIndex, playlist.length - 1);
       updatePlaylistUI(); await loadPlaylistTrack(playlistIndex);
-      showToast(canDeleteFromDisk ? "File deleted from folder." : "Removed from this session only.");
+      showToast("Invalid audio file deleted from folder.");
     } catch (err) { console.error(err); showToast("Could not delete file. Check folder permission and try again."); }
   });
   const replaceInput = $("replaceAudioInput");

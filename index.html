@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%230b1020%22/%3E%3Cpath d=%22M12 32h6l5-13 8 27 7-34 7 27 4-7h3%22 fill=%22none%22 stroke=%22%238b9cff%22 stroke-width=%224%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E" />
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="AudioScope" />
@@ -56,14 +57,17 @@
 
       <input id="folderInput" type="file" webkitdirectory directory multiple accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg,.aac,.aiff,.opus" />
       <section class="workspace hidden" id="workspace">
-        <section class="folder-manager panel" aria-label="Audio file manager">
-          <div class="section-heading"><div><span class="section-index">01</span><div><h2>Audio manager</h2><p id="managerFileName">Manage files in the selected folder</p></div></div><button class="secondary-button" id="managerChooseFolder" type="button">Choose folder</button></div>
-          <div class="manager-actions">
-            <div class="manager-action-card"><span class="manager-label">PREVIOUS FILE</span><strong>Go to previous audio</strong><button class="secondary-button" id="previousTrack" type="button" disabled>Previous</button></div>
-            <div class="manager-action-card manager-current"><span class="manager-label">CURRENT FILE</span><strong id="playlistCount">0 files</strong><small>Choose a recording to load only that file.</small><label class="track-select-label" for="trackSelect">SELECT AUDIO</label><select id="trackSelect" class="track-select" aria-label="Select audio file" disabled><option value="">Choose a file</option></select></div>
-            <div class="manager-action-card"><span class="manager-label">NEXT FILE</span><strong>Go to next audio</strong><button class="secondary-button" id="nextTrack" type="button" disabled>Next</button></div>
-            <div class="manager-action-card manager-delete"><span class="manager-label">DELETE</span><strong>Remove current audio</strong><small>Disk deletion needs folder permission.</small><button class="danger-button" id="deleteTrack" type="button" disabled>Delete file</button></div>
+        <section class="properties-panel panel" id="propertiesPanel">
+          <div class="section-heading"><div><span class="section-index">01</span><div><h2>Audio properties</h2><p>Analysis for the currently selected file</p></div></div></div>
+          <div class="property-grid">
+            <div class="property-card"><span>Peak frequency</span><strong id="peakFrequency">—</strong><small>Strongest non-DC FFT bin</small></div>
+            <div class="property-card"><span>Estimated SNR</span><strong id="snrValue">—</strong><small>Short-time RMS comparison</small></div>
+            <div class="property-card"><span>Peak amplitude</span><strong id="peakAmplitude">—</strong><small>Absolute sample peak</small></div>
+            <div class="property-card"><span>RMS level</span><strong id="rmsLevel">—</strong><small>Overall signal level</small></div>
+            <div class="property-card"><span>Sample rate</span><strong id="propertySampleRate">—</strong><small>Decoded audio</small></div>
+            <div class="property-card"><span>Channels</span><strong id="propertyChannels">—</strong><small>Source channel count</small></div>
           </div>
+          <p class="property-note">SNR is an estimate from louder and quieter short-time RMS windows, not a calibrated noise measurement. Peak frequency is estimated from a windowed FFT of a segment of the selected audio.</p>
         </section>
         <section class="player-card panel">
           <div class="section-heading">
@@ -99,9 +103,37 @@
           <div class="player-foot"><span><kbd>Space</kbd> Play / pause</span><span><kbd>←</kbd> <kbd>→</kbd> Seek 5 seconds</span><span id="sampleRateLabel">Waiting for audio</span></div>
         </section>
 
+
+
+        <section class="folder-manager panel" aria-label="Audio file manager">
+          <div class="section-heading">
+            <div><span class="section-index">03</span><div><h2>Audio manager</h2><p id="managerFileName">Open a folder to browse recordings and subfolders</p></div></div>
+            <button class="secondary-button" id="managerChooseFolder" type="button">Choose folder</button>
+          </div>
+          <div class="library-toolbar">
+            <div class="library-count"><strong id="playlistCount">No files loaded</strong><span id="filteredCount"></span></div>
+            <div class="library-field folder-field">
+              <label for="subfolderSelect">Subfolder</label>
+              <select id="subfolderSelect" class="track-select subfolder-select" aria-label="Select a subfolder" disabled>
+                <option value="">All folders</option>
+              </select>
+            </div>
+            <div class="library-field recording-field">
+              <label for="trackSelect">Recording</label>
+              <select id="trackSelect" class="track-select" aria-label="Select audio file" disabled><option value="">Choose a folder first</option></select>
+            </div>
+            <div class="track-nav" aria-label="Recording navigation"><button class="secondary-button compact-button" id="previousTrack" type="button" disabled aria-label="Previous audio">← Prev</button><button class="secondary-button compact-button" id="nextTrack" type="button" disabled aria-label="Next audio">Next →</button></div>
+            <button class="danger-button compact-button hidden" id="deleteTrack" type="button">Delete invalid audio</button>
+          </div>
+          <div class="cleanup-tools">
+            <div class="cleanup-copy"><strong>Folder cleanup</strong><span id="cleanupSummary">Scan for zero-byte files and folders containing no files.</span></div>
+            <div class="cleanup-actions"><button class="secondary-button compact-button" id="scanCleanup" type="button">Scan folder</button><button class="danger-button compact-button hidden" id="deleteEmptyFiles" type="button" disabled>Delete empty files</button><button class="danger-button compact-button hidden" id="deleteEmptyFolders" type="button" disabled>Delete empty folders</button></div>
+          </div>
+          <div class="cleanup-results hidden" id="cleanupResults" aria-live="polite"></div>
+        </section>
         <section class="visual-panel panel">
           <div class="section-heading visual-heading">
-            <div><span class="section-index">03</span><div><h2>Spectrogram</h2><p>Frequency energy over time</p></div></div>
+            <div><span class="section-index">04</span><div><h2>Spectrogram</h2><p>Frequency energy over time</p></div></div>
             <div class="visual-tools">
               <label class="select-wrap"><span>Scale</span><select id="frequencyScale"><option value="log">Logarithmic</option><option value="linear">Linear</option></select></label>
               <label class="select-wrap"><span>Palette</span><select id="paletteSelect"><option value="violet">Violet</option><option value="thermal">Thermal</option><option value="mono">Monochrome</option></select></label>
@@ -119,7 +151,7 @@
 
         <section class="visual-panel panel">
           <div class="section-heading visual-heading">
-            <div><span class="section-index">04</span><div><h2>Waveform</h2><p>Amplitude over time</p></div></div>
+            <div><span class="section-index">05</span><div><h2>Waveform</h2><p>Amplitude over time</p></div></div>
             <div class="wave-legend"><span></span> Amplitude</div>
           </div>
           <div class="visual-stage waveform-stage" id="waveformStage">
@@ -131,18 +163,7 @@
           </div>
           <div class="panel-foot"><span>Peak amplitude view</span><span>Click anywhere on the visualization to seek</span></div>
         </section>
-        <section class="properties-panel panel" id="propertiesPanel">
-          <div class="section-heading"><div><span class="section-index">05</span><div><h2>Audio properties</h2><p>Analysis for the currently selected file</p></div></div></div>
-          <div class="property-grid">
-            <div class="property-card"><span>Peak frequency</span><strong id="peakFrequency">—</strong><small>Strongest non-DC FFT bin</small></div>
-            <div class="property-card"><span>Estimated SNR</span><strong id="snrValue">—</strong><small>Short-time RMS comparison</small></div>
-            <div class="property-card"><span>Peak amplitude</span><strong id="peakAmplitude">—</strong><small>Absolute sample peak</small></div>
-            <div class="property-card"><span>RMS level</span><strong id="rmsLevel">—</strong><small>Overall signal level</small></div>
-            <div class="property-card"><span>Sample rate</span><strong id="propertySampleRate">—</strong><small>Decoded audio</small></div>
-            <div class="property-card"><span>Channels</span><strong id="propertyChannels">—</strong><small>Source channel count</small></div>
-          </div>
-          <p class="property-note">SNR is an estimate from louder and quieter short-time RMS windows, not a calibrated noise measurement. Peak frequency is estimated from a windowed FFT of a segment of the selected audio.</p>
-        </section>
+
       </section>
       <section class="empty-state" id="emptyState">
         <div class="empty-orbit"><div class="orbit-dot"></div><div class="orbit-core">A</div></div>
