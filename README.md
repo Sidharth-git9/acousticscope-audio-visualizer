@@ -1,6 +1,6 @@
-# AudioScope
+# AcousticScope
 
-AudioScope is a browser-based audio visualizer and analyzer with synchronized playback, spectrogram, waveform, folder playlist navigation, deletion controls, and audio-property estimates.
+AcousticScope is a browser-based audio visualizer and analyzer with synchronized playback, spectrogram, waveform, folder playlist navigation, deletion controls, and audio-property estimates.
 
 **Created by Sidharth Subrahmanya H.**
 
@@ -10,7 +10,7 @@ Use a local web server (for example, `python -m http.server 8000`) and open `htt
 
 ## Install as a web app
 
-Deploy the complete folder to a static HTTPS host. Open it in Chrome or Edge and choose **Install app**. If the install prompt is not available, use the browser's menu and select **Install AudioScope** or **Install page as app**. The app manifest and service worker are included.
+Deploy the complete folder to a static HTTPS host. Open it in Chrome or Edge and choose **Install app**. If the install prompt is not available, use the browser's menu and select **Install AcousticScope** or **Install page as app**. The app manifest and service worker are included.
 
 ## Folder access and deletion
 

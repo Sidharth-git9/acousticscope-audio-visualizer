@@ -1,6 +1,6 @@
 {
-  "name": "AudioScope",
-  "short_name": "AudioScope",
+  "name": "AcousticScope",
+  "short_name": "AcousticScope",
   "description": "Offline audio player with synchronized spectrogram and waveform analysis.",
   "start_url": "./",
   "scope": "./",

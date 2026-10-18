@@ -1,10 +1,10 @@
-const CACHE_NAME = "audioscope-pwa-v4";
+const CACHE_NAME = "acousticscope-pwa-v6";
 const APP_FILES = ["./", "./index.html", "./style.css", "./script.js", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("audioscope-pwa-") && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => (key.startsWith("acousticscope-pwa-") || (key.startsWith("audioscope-pwa-") || key.startsWith("ondulyra-pwa-"))) && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;

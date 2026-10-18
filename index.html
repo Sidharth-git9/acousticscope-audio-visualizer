@@ -4,28 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1020" />
-  <title>AudioScope — Audio Visual Analyzer</title>
+  <title>AcousticScope — Audio Visual Analyzer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%230b1020%22/%3E%3Cpath d=%22M12 32h6l5-13 8 27 7-34 7 27 4-7h3%22 fill=%22none%22 stroke=%22%238b9cff%22 stroke-width=%224%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E" />
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="AudioScope" />
+  <meta name="apple-mobile-web-app-title" content="AcousticScope" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#" aria-label="AudioScope home">
+      <a class="brand" href="#" aria-label="AcousticScope home">
         <span class="brand-mark"><span></span><span></span><span></span><span></span></span>
-        <span>Audio<span class="brand-light">Scope</span></span>
+        <span>Acoustic<span class="brand-light">Scope</span></span>
       </a>
       <div class="topbar-right">
         <span class="local-badge"><span class="status-dot"></span> LOCAL PROCESSING</span>
         <button class="primary-button install-button" id="installButton" type="button">Install app</button>
-        <button class="icon-button" id="aboutButton" aria-label="About AudioScope" title="About AudioScope">i</button>
+        <button class="icon-button" id="aboutButton" aria-label="About AcousticScope" title="About AcousticScope">i</button>
       </div>
     </header>
 
@@ -71,7 +71,7 @@
         </section>
         <section class="player-card panel">
           <div class="section-heading">
-            <div><span class="section-index">02</span><h2>Playback</h2></div>
+            <div><span class="section-index">03</span><h2>Playback</h2></div>
             <div class="heading-actions">
               <label class="secondary-button" for="replaceAudioInput">Open another file</label>
               <input id="replaceAudioInput" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg,.aac,.aiff,.opus" />
@@ -107,7 +107,7 @@
 
         <section class="folder-manager panel" aria-label="Audio file manager">
           <div class="section-heading">
-            <div><span class="section-index">03</span><div><h2>Audio manager</h2><p id="managerFileName">Open a folder to browse recordings and subfolders</p></div></div>
+            <div><span class="section-index">04</span><div><h2>Audio manager</h2><p id="managerFileName">Open a folder to browse recordings and subfolders</p></div></div>
             <button class="secondary-button" id="managerChooseFolder" type="button">Choose folder</button>
           </div>
           <div class="library-toolbar">
@@ -123,17 +123,13 @@
               <select id="trackSelect" class="track-select" aria-label="Select audio file" disabled><option value="">Choose a folder first</option></select>
             </div>
             <div class="track-nav" aria-label="Recording navigation"><button class="secondary-button compact-button" id="previousTrack" type="button" disabled aria-label="Previous audio">← Prev</button><button class="secondary-button compact-button" id="nextTrack" type="button" disabled aria-label="Next audio">Next →</button></div>
-            <button class="danger-button compact-button hidden" id="deleteTrack" type="button">Delete invalid audio</button>
+            <button class="danger-button compact-button hidden" id="deleteTrack" type="button">Delete file</button>
           </div>
-          <div class="cleanup-tools">
-            <div class="cleanup-copy"><strong>Folder cleanup</strong><span id="cleanupSummary">Scan for zero-byte files and folders containing no files.</span></div>
-            <div class="cleanup-actions"><button class="secondary-button compact-button" id="scanCleanup" type="button">Scan folder</button><button class="danger-button compact-button hidden" id="deleteEmptyFiles" type="button" disabled>Delete empty files</button><button class="danger-button compact-button hidden" id="deleteEmptyFolders" type="button" disabled>Delete empty folders</button></div>
-          </div>
-          <div class="cleanup-results hidden" id="cleanupResults" aria-live="polite"></div>
+          <div class="cleanup-tools"><span class="cleanup-copy"><strong>Bulk delete</strong></span><div class="cleanup-actions"><button class="danger-button compact-button" id="deleteInvalidFiles" type="button" disabled>Delete invalid files</button><button class="danger-button compact-button" id="deleteEmptyFolders" type="button" disabled>Delete empty subfolders</button></div></div>
         </section>
-        <section class="visual-panel panel">
+        <section class="visual-panel panel" id="spectrogramPanel">
           <div class="section-heading visual-heading">
-            <div><span class="section-index">04</span><div><h2>Spectrogram</h2><p>Frequency energy over time</p></div></div>
+            <div><span class="section-index">05</span><div><h2>Spectrogram</h2><p>Frequency energy over time</p></div></div>
             <div class="visual-tools">
               <label class="select-wrap"><span>Scale</span><select id="frequencyScale"><option value="log">Logarithmic</option><option value="linear">Linear</option></select></label>
               <label class="select-wrap"><span>Palette</span><select id="paletteSelect"><option value="violet">Violet</option><option value="thermal">Thermal</option><option value="mono">Monochrome</option></select></label>
@@ -149,9 +145,9 @@
           <div class="panel-foot"><span><span class="legend-gradient"></span> Low energy <span class="legend-bright"></span> High energy</span><span>Click anywhere on the visualization to seek</span></div>
         </section>
 
-        <section class="visual-panel panel">
+        <section class="visual-panel panel" id="waveformPanel">
           <div class="section-heading visual-heading">
-            <div><span class="section-index">05</span><div><h2>Waveform</h2><p>Amplitude over time</p></div></div>
+            <div><span class="section-index">02</span><div><h2>Waveform</h2><p>Amplitude over time</p></div></div>
             <div class="wave-legend"><span></span> Amplitude</div>
           </div>
           <div class="visual-stage waveform-stage" id="waveformStage">
@@ -171,12 +167,12 @@
         <p>Your audio stays on your device. Load a file to begin exploring its structure.</p>
       </section>
     </main>
-    <footer><span>AudioScope <span class="footer-muted">/ Browser-based audio analysis</span><span class="creator-credit">Created by Sidharth Subrahmanya H</span></span><span>DESIGNED FOR FOCUSED LISTENING</span></footer>
+    <footer><span>AcousticScope <span class="footer-muted">/ Browser-based audio analysis</span><span class="creator-credit">Created by Sidharth Subrahmanya H</span></span><span>DESIGNED FOR FOCUSED LISTENING</span></footer>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <dialog id="aboutDialog">
-    <div class="dialog-head"><strong>About AudioScope</strong><button class="icon-button" id="closeAbout" aria-label="Close">×</button></div>
-    <p>AudioScope is a browser-based audio inspection workspace. Playback, waveform rendering, and spectrogram generation run locally on your device.</p>
+    <div class="dialog-head"><strong>About AcousticScope</strong><button class="icon-button" id="closeAbout" aria-label="Close">×</button></div>
+    <p>AcousticScope is a browser-based audio inspection workspace. Playback, waveform rendering, and spectrogram generation run locally on your device.</p>
     <p>For very long recordings, rendering may take a moment. Supported formats depend on the browser’s audio decoder.</p>
     <p class="about-credit">Created by <strong>Sidharth Subrahmanya H</strong>.</p>
     <button class="primary-button dialog-close" id="closeAboutBottom">Got it</button>

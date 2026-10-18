@@ -215,3 +215,34 @@ body{background:var(--bg);color:var(--text);font-size:14px}.app-shell{max-width:
 .folder-option[hidden]{display:none}
 .folder-option[data-folder=""]{color:var(--muted);border-bottom:1px solid var(--line);border-radius:0;margin-bottom:3px}
 .folder-combobox:focus-within .subfolder-select{border-color:var(--accent)}
+
+
+/* Unified control sizing and refined folder-cleanup layout */
+button, .secondary-button, .primary-button, .danger-button { min-height: 36px; font-size: 12px; line-height: 1.2; font-weight: 600; border-radius: 7px; padding: 8px 13px; transition: background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid rgba(53,104,212,.22); outline-offset: 2px; }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .48; cursor: not-allowed; }
+.compact-button { min-height: 34px; padding: 7px 11px; font-size: 11px; }
+.library-toolbar { grid-template-columns: minmax(110px,.65fr) minmax(170px,1fr) minmax(220px,1.6fr) auto auto; gap: 10px; }
+.track-select { min-height: 40px; font-size: 12px; padding: 9px 12px; }
+.cleanup-tools { display: grid; grid-template-columns: minmax(180px,1fr) minmax(220px,1.1fr) auto; align-items: end; gap: 14px; padding: 16px 18px; }
+.cleanup-copy { align-self: center; gap: 5px; }
+.cleanup-copy strong { font-size: 12px; }
+.cleanup-copy span { font-size: 11px; }
+.invalid-audio-control { min-width: 0; }
+.invalid-audio-control label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; color: #596575; font-size: 11px; font-weight: 600; }
+#invalidAudioCount { color: #68717d; font-size: 10px; font-weight: 500; white-space: nowrap; }
+.invalid-audio-control .track-select { margin: 0; }
+.cleanup-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+#deleteInvalidFiles { white-space: nowrap; }
+#deleteInvalidFiles:not(:disabled) { background: #fff1f1; border-color: #e6b2b2; color: #a52f36; }
+#deleteInvalidFiles:not(:disabled):hover { background: #ffe5e5; border-color: #d58a8a; }
+.hidden { display: none !important; }
+@media (max-width: 1050px) { .library-toolbar { grid-template-columns: minmax(100px,.6fr) minmax(160px,1fr) minmax(190px,1.4fr) auto; } .track-nav { grid-column: 3; } #deleteTrack { grid-column: 4; } .cleanup-tools { grid-template-columns: 1fr 1.2fr; } .cleanup-actions { grid-column: 1 / -1; justify-content: flex-start; flex-wrap: wrap; } }
+@media (max-width: 680px) { .library-toolbar { grid-template-columns: 1fr 1fr; } .library-count { grid-column: 1 / -1; } .recording-field { grid-column: 1 / -1; } .track-nav { grid-column: 1; } #deleteTrack { grid-column: 2; } .cleanup-tools { grid-template-columns: 1fr; align-items: stretch; padding: 14px; } .cleanup-actions { grid-column: auto; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; } .cleanup-actions button { width: 100%; white-space: normal; } .invalid-audio-control { grid-row: 2; } }
+@media (max-width: 390px) { .cleanup-actions { grid-template-columns: 1fr; } .library-toolbar { padding: 12px; gap: 8px; } button, .secondary-button, .primary-button, .danger-button { padding-left: 10px; padding-right: 10px; } }
+
+/* Section order: properties, waveform, playback, manager, spectrogram */
+#propertiesPanel{order:0}#waveformPanel{order:1}.player-card{order:2}.folder-manager{order:3}#spectrogramPanel{order:4}
+.cleanup-tools{justify-content:flex-start;flex-wrap:wrap}
+.cleanup-actions{flex:1;justify-content:flex-end}
