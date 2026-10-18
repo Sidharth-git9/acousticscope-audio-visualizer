@@ -467,13 +467,13 @@
     }
     return { files };
   }
+  function openFolderReadOnly(reason) {
+    showToast(`${reason} Opening folder in read-only mode (deleting from disk is unavailable).`);
+    try { folderInput.click(); } catch (e) {}
+  }
   async function chooseFolderWithPermission() {
-    if (!window.isSecureContext) {
-      showToast("Folder access requires HTTPS or http://localhost. Open AcousticScope through localhost, not a file or network IP address.");
-      return;
-    }
-    if (typeof window.showDirectoryPicker !== "function") {
-      showToast("Direct folder management requires a current version of Chrome or Edge. File-upload mode cannot delete files from disk.");
+    if (!window.isSecureContext || typeof window.showDirectoryPicker !== "function") {
+      openFolderReadOnly("Direct folder access isn't available here.");
       return;
     }
     try {
@@ -490,9 +490,7 @@
     } catch (err) {
       if (err && err.name !== "AbortError") {
         console.error("Folder access failed:", err);
-        if (err.name === "NotAllowedError") showToast("Folder access was blocked. Choose the folder again and allow read/write access.");
-        else if (err.name === "SecurityError") showToast("Folder access is blocked for this page. Open AcousticScope from http://localhost or HTTPS in Chrome/Edge.");
-        else showToast(`Could not access folder: ${err.message || err.name || "unknown error"}`);
+        openFolderReadOnly("Folder access was blocked or failed.");
       }
     }
   }
@@ -728,7 +726,7 @@
     input.value = "";
   });
   folderInput.addEventListener("change", e => {
-    directoryHandle = null; playlistEntries = []; playlistSource = "files";
+    directoryHandle = null; playlistEntries = []; playlistSource = "files"; invalidAudioFiles = []; refreshCleanupState();
     const selected = Array.from(e.target.files || []).filter(file => isAudioFile(file));
     selected.sort((a, b) => {
       const aPath = a.webkitRelativePath || a.name;
