@@ -26,10 +26,10 @@
 .danger-button{display:inline-flex;align-items:center;justify-content:center;padding:8px 11px;border:1px solid #70404d;border-radius:7px;background:#2b1b2a;color:#ffb6c2;font-size:10px;font-weight:700;cursor:pointer;transition:background .2s,border-color .2s}
 .danger-button:hover:not(:disabled){background:#43212f;border-color:#b65c70}
 .danger-button:disabled{opacity:.38;cursor:not-allowed}
-.property-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:16px 20px 12px}
-.property-card{display:flex;flex-direction:column;gap:7px;min-width:0;padding:15px;border:1px solid rgba(92,109,149,.24);border-radius:9px;background:rgba(8,14,27,.38)}
+.property-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;padding:16px 20px 12px}
+.property-card{display:flex;flex-direction:column;gap:7px;min-width:0;padding:12px;border:1px solid rgba(92,109,149,.24);border-radius:9px;background:rgba(8,14,27,.38)}
 .property-card span{font-size:10px;color:#8492b1}
-.property-card strong{font:600 19px var(--mono);color:#e5e4ff;overflow-wrap:anywhere}
+.property-card strong{font:600 14px var(--mono);color:#e5e4ff;overflow-wrap:anywhere}
 .property-card small{font-size:9px;color:#667493;line-height:1.5}
 .property-note{margin:0;padding:0 20px 17px;font-size:10px;line-height:1.7;color:#71809f}
 .creator-credit{margin-left:8px;color:#a9b3cb}
@@ -246,3 +246,5 @@ button:disabled { opacity: .48; cursor: not-allowed; }
 #propertiesPanel{order:0}#waveformPanel{order:1}.player-card{order:2}.folder-manager{order:3}#spectrogramPanel{order:4}
 .cleanup-tools{justify-content:flex-start;flex-wrap:wrap}
 .cleanup-actions{flex:1;justify-content:flex-end}
+
+@media(max-width:1100px) and (min-width:701px){.property-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
