@@ -1,7 +1,10 @@
 AcousticScope install and folder access
+Created by Sidharth Subrahmanya H · Idea by Mr. Shanmukharaja M
 
 1. Deploy the complete folder to a static HTTPS host such as Cloudflare Pages or GitHub Pages. Do not open index.html directly as a file.
 2. Open the deployed site in a current version of Chrome or Edge.
 3. Use the Install app button if the browser offers installation. If it does not, use the browser menu and select Install AcousticScope / Install page as app.
 4. Folder-level permanent deletion requires the browser's directory picker and read/write permission. If using the fallback folder picker, Delete file only removes the track from the current session.
 5. After updating a deployment, hard refresh once if an old cached version remains.
+
+Created by Sidharth Subrahmanya H · Idea by Mr. Shanmukharaja M

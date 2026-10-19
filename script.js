@@ -1,5 +1,7 @@
+/* AcousticScope — Created by Sidharth Subrahmanya H · Idea by Mr. Shanmukharaja M */
 (() => {
   "use strict";
+  console.info("%cAcousticScope%c Created by Sidharth Subrahmanya H · Idea by Mr. Shanmukharaja M","font-weight:700;color:#3568d4","color:inherit");
   const $ = (id) => document.getElementById(id);
   const audio = $("audioPlayer");
   const input = $("audioInput");
@@ -195,135 +197,188 @@
     const last = stops[stops.length - 1];
     return last.slice(1);
   }
-  function buildSpectrogram(buffer) {
-    const channel = buffer.getChannelData(0);
-    const sampleRate = buffer.sampleRate;
-    const fftSize = 2048;
-    const hop = 512;
-    const bins = fftSize / 2;
-    const columns = Math.min(2400, Math.max(600, Math.ceil(channel.length / hop)));
-    const step = Math.max(hop, Math.floor(channel.length / columns / hop) * hop);
-    const frames = Math.max(1, Math.ceil((channel.length - fftSize) / step) + 1);
-    const width = Math.min(2400, frames);
-    const height = 512;
-    const data = new Float32Array(width * height);
-    const windowFn = new Float32Array(fftSize);
-    for (let i = 0; i < fftSize; i++) windowFn[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (fftSize - 1));
-    const real = new Float32Array(fftSize);
-    const imag = new Float32Array(fftSize);
-    const magnitudes = new Float32Array(bins);
-    const logScale = $("frequencyScale").value === "log";
-    // Direct DFT at a reduced number of bins keeps this dependency-free and robust.
-    const displayBins = 256;
-    const cosTable = new Float32Array(displayBins * fftSize);
-    const sinTable = new Float32Array(displayBins * fftSize);
-    for (let k = 0; k < displayBins; k++) {
-      const bin = Math.max(1, Math.floor((k / (displayBins - 1)) * (bins - 1)));
-      for (let n = 0; n < fftSize; n++) {
-        const angle = 2 * Math.PI * bin * n / fftSize;
-        cosTable[k * fftSize + n] = Math.cos(angle);
-        sinTable[k * fftSize + n] = Math.sin(angle);
-      }
-    }
-    const out = document.createElement("canvas");
-    out.width = width; out.height = height;
-    const outCtx = out.getContext("2d", { willReadFrequently: true });
-    const image = outCtx.createImageData(width, height);
-    const palette = COLORS[$("paletteSelect").value] || COLORS.violet;
-    for (let x = 0; x < width; x++) {
-      const start = Math.min(channel.length - fftSize, x * step);
-      for (let n = 0; n < fftSize; n++) real[n] = (channel[Math.max(0, start + n)] || 0) * windowFn[n];
-      for (let k = 0; k < displayBins; k++) {
-        let re = 0, im = 0;
-        const offset = k * fftSize;
-        for (let n = 0; n < fftSize; n++) {
-          re += real[n] * cosTable[offset + n];
-          im -= real[n] * sinTable[offset + n];
-        }
-        magnitudes[k] = Math.sqrt(re * re + im * im) / fftSize;
-      }
-      for (let y = 0; y < height; y++) {
-        let normalizedY = 1 - y / (height - 1);
-        let idx;
-        if (logScale) {
-          const minHz = 20, maxHz = sampleRate / 2;
-          const hz = minHz * Math.pow(maxHz / minHz, normalizedY);
-          idx = Math.max(0, Math.min(displayBins - 1, Math.round(hz / (sampleRate / 2) * (displayBins - 1))));
-        } else idx = Math.round(normalizedY * (displayBins - 1));
-        const db = 20 * Math.log10(magnitudes[idx] + 1e-7);
-        const value = Math.max(0, Math.min(1, (db + 82) / 75));
-        const [r, g, b] = interpColor(value, palette);
-        const p = (y * width + x) * 4;
-        image.data[p] = r; image.data[p + 1] = g; image.data[p + 2] = b; image.data[p + 3] = 255;
-      }
-      if (x % 30 === 0) {
-        // Yield periodically so the page remains responsive during longer files.
-        if (x > 0 && x % 180 === 0) {}
-      }
-    }
-    outCtx.putImageData(image, 0, 0);
-    specImage = out;
+  // ==== Spectrogram engine ================================================
+  // Configurable STFT (FFT size, hop, window). Magnitudes are cached in dBFS so
+  // changing the dB floor/ceiling, palette or frequency scale only re-colours.
+  const SPEC_DEFAULTS = { fft: 2048, hop: 512, win: "hann", floor: -70, ceil: 0 };
+  const spec = { ...SPEC_DEFAULTS };
+  const MAX_COLUMNS = 2400, IMG_H = 512, MIN_LOG_HZ = 20, AMP_K = 0.44;
+  let specDb = null, specMeta = null, specRows = null, specCursor = null, specToken = 0, freqAxisKey = "";
+  const fftTables = new Map();
+  function getFftTables(n) {
+    let t = fftTables.get(n);
+    if (t) return t;
+    const rev = new Uint32Array(n), cos = new Float64Array(n / 2), sin = new Float64Array(n / 2);
+    const bits = Math.round(Math.log2(n));
+    for (let i = 0; i < n; i++) { let r = 0; for (let b = 0; b < bits; b++) if (i & (1 << b)) r |= 1 << (bits - 1 - b); rev[i] = r; }
+    for (let k = 0; k < n / 2; k++) { cos[k] = Math.cos(2 * Math.PI * k / n); sin[k] = -Math.sin(2 * Math.PI * k / n); }
+    t = { rev, cos, sin }; fftTables.set(n, t); return t;
   }
-  // Fast radix-2 FFT for practical spectrogram rendering.
-  function fftMagnitudes(samples, fftSize) {
-    const re = new Float32Array(fftSize), im = new Float32Array(fftSize);
-    for (let i = 0; i < fftSize; i++) re[i] = samples[i] || 0;
-    for (let i = 1, j = 0; i < fftSize; i++) {
-      let bit = fftSize >> 1;
-      for (; j & bit; bit >>= 1) j ^= bit;
-      j ^= bit;
-      if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; }
-    }
-    for (let len = 2; len <= fftSize; len <<= 1) {
-      const angle = -2 * Math.PI / len, wlenR = Math.cos(angle), wlenI = Math.sin(angle);
-      for (let i = 0; i < fftSize; i += len) {
-        let wr = 1, wi = 0;
-        for (let j = 0; j < len / 2; j++) {
-          const uR = re[i + j], uI = im[i + j];
-          const vR = re[i + j + len / 2] * wr - im[i + j + len / 2] * wi;
-          const vI = re[i + j + len / 2] * wi + im[i + j + len / 2] * wr;
-          re[i + j] = uR + vR; im[i + j] = uI + vI;
-          re[i + j + len / 2] = uR - vR; im[i + j + len / 2] = uI - vI;
-          const nextR = wr * wlenR - wi * wlenI;
-          wi = wr * wlenI + wi * wlenR; wr = nextR;
+  function fftInPlace(re, im, n, t) {
+    const rev = t.rev;
+    for (let i = 0; i < n; i++) { const j = rev[i]; if (i < j) { let x = re[i]; re[i] = re[j]; re[j] = x; x = im[i]; im[i] = im[j]; im[j] = x; } }
+    for (let size = 2; size <= n; size <<= 1) {
+      const half = size >> 1, step = n / size;
+      for (let i = 0; i < n; i += size) {
+        for (let j = 0, k = 0; j < half; j++, k += step) {
+          const a = i + j, b = a + half, wr = t.cos[k], wi = t.sin[k];
+          const tr = re[b] * wr - im[b] * wi, ti = re[b] * wi + im[b] * wr;
+          re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
         }
       }
     }
-    return { re, im };
   }
-  function buildSpectrogramFast(buffer) {
-    const channel = buffer.getChannelData(0);
-    const fftSize = 2048, hop = 512, bins = fftSize / 2;
-    const frames = Math.max(1, Math.ceil((channel.length - fftSize) / hop) + 1);
-    const width = Math.min(2200, frames), height = 512;
-    const imageCanvas = document.createElement("canvas");
-    imageCanvas.width = width; imageCanvas.height = height;
-    const ctx = imageCanvas.getContext("2d");
-    const image = ctx.createImageData(width, height);
-    const win = new Float32Array(fftSize);
-    for (let n = 0; n < fftSize; n++) win[n] = 0.5 - 0.5 * Math.cos(2 * Math.PI * n / (fftSize - 1));
-    const palette = COLORS[$("paletteSelect").value] || COLORS.violet;
-    const logScale = $("frequencyScale").value === "log";
-    const sampleRate = buffer.sampleRate;
-    for (let x = 0; x < width; x++) {
-      const start = Math.min(Math.max(0, channel.length - fftSize), Math.floor(x * hop * frames / width));
-      const samples = new Float32Array(fftSize);
-      for (let n = 0; n < fftSize; n++) samples[n] = (channel[start + n] || 0) * win[n];
-      const { re, im } = fftMagnitudes(samples, fftSize);
-      for (let y = 0; y < height; y++) {
-        const frac = 1 - y / (height - 1);
-        const hz = logScale ? 20 * Math.pow((sampleRate / 2) / 20, frac) : frac * sampleRate / 2;
-        const bin = Math.max(0, Math.min(bins - 1, Math.round(hz / sampleRate * fftSize)));
-        const db = 20 * Math.log10(Math.sqrt(re[bin] ** 2 + im[bin] ** 2) / fftSize + 1e-7);
-        const v = Math.max(0, Math.min(1, (db + 82) / 75));
-        const [r, g, b] = interpColor(v, palette);
-        const p = (y * width + x) * 4;
-        image.data[p] = r; image.data[p + 1] = g; image.data[p + 2] = b; image.data[p + 3] = 255;
+  function makeWindow(type, n) {
+    const w = new Float64Array(n), d = Math.max(1, n - 1);
+    for (let i = 0; i < n; i++) {
+      const x = 2 * Math.PI * i / d;
+      switch (type) {
+        case "hamming": w[i] = 0.54 - 0.46 * Math.cos(x); break;
+        case "blackman": w[i] = 0.42 - 0.5 * Math.cos(x) + 0.08 * Math.cos(2 * x); break;
+        case "blackmanharris": w[i] = 0.35875 - 0.48829 * Math.cos(x) + 0.14128 * Math.cos(2 * x) - 0.01168 * Math.cos(3 * x); break;
+        case "bartlett": w[i] = 1 - Math.abs(2 * i / d - 1); break;
+        case "rect": w[i] = 1; break;
+        default: w[i] = 0.5 - 0.5 * Math.cos(x);
       }
     }
-    ctx.putImageData(image, 0, 0);
-    specImage = imageCanvas;
+    return w;
   }
+  function isLogScale(nyq) { return $("frequencyScale").value === "log" && nyq > MIN_LOG_HZ * 2; }
+  function hzFromFrac(frac, nyq, log) { frac = Math.max(0, Math.min(1, frac)); return log ? MIN_LOG_HZ * Math.pow(nyq / MIN_LOG_HZ, frac) : frac * nyq; }
+  function fracFromHz(hz, nyq, log) { return Math.max(0, Math.min(1, log ? Math.log(Math.max(hz, MIN_LOG_HZ) / MIN_LOG_HZ) / Math.log(nyq / MIN_LOG_HZ) : hz / nyq)); }
+  function formatHz(f, precise = false) {
+    if (f >= 1000) return `${precise ? (f / 1000).toFixed(2) : +(f / 1000).toFixed(1)} kHz`;
+    return `${precise ? f.toFixed(1) : Math.round(f)} Hz`;
+  }
+  function formatTimePrecise(s) {
+    if (!Number.isFinite(s) || s < 0) s = 0;
+    const m = Math.floor(s / 60); return `${String(m).padStart(2, "0")}:${(s % 60).toFixed(2).padStart(5, "0")}`;
+  }
+  async function computeSpectrogram(buffer, token, label) {
+    const channel = buffer.getChannelData(0), N = channel.length, sr = buffer.sampleRate;
+    const fft = spec.fft, hop = spec.hop, bins = fft / 2 + 1;
+    const framesByHop = N <= fft ? 1 : Math.ceil((N - fft) / hop) + 1;
+    const cols = Math.min(MAX_COLUMNS, framesByHop), capped = framesByHop > MAX_COLUMNS;
+    const stride = capped ? (N - fft) / (cols - 1) : hop;
+    const win = makeWindow(spec.win, fft);
+    let winSum = 0; for (let i = 0; i < fft; i++) winSum += win[i];
+    const norm = 4 / (winSum * winSum);            // a full-scale sine reads 0 dBFS
+    const t = getFftTables(fft), re = new Float64Array(fft), im = new Float64Array(fft);
+    const db = new Float32Array(cols * bins), note = $("spectrogramOverlay").querySelector("span");
+    let lastYield = performance.now();
+    for (let c = 0; c < cols; c++) {
+      const start = Math.floor(c * stride), avail = Math.max(0, Math.min(fft, N - start));
+      for (let n = 0; n < avail; n++) re[n] = channel[start + n] * win[n];
+      for (let n = avail; n < fft; n++) re[n] = 0;
+      im.fill(0);
+      fftInPlace(re, im, fft, t);
+      const o = c * bins;
+      for (let k = 0; k < bins; k++) { const p = (re[k] * re[k] + im[k] * im[k]) * norm; db[o + k] = p > 1e-20 ? 10 * Math.log10(p) : -200; }
+      if (performance.now() - lastYield > 30) {
+        if (note && label) note.textContent = `${label} ${Math.round(c / cols * 100)}%`;
+        await new Promise(r => setTimeout(r, 0));
+        if (token !== specToken) return false;
+        lastYield = performance.now();
+      }
+    }
+    if (token !== specToken) return false;
+    specDb = db; specMeta = { cols, bins, fft, hop, stride, sr, N, capped };
+    return true;
+  }
+  function buildRowMap() {
+    const { sr, fft, bins } = specMeta, nyq = sr / 2, log = isLogScale(nyq);
+    const mode = new Uint8Array(IMG_H), A = new Int32Array(IMG_H), B = new Int32Array(IMG_H), F = new Float32Array(IMG_H);
+    for (let y = 0; y < IMG_H; y++) {
+      const pHi = hzFromFrac(1 - y / IMG_H, nyq, log) * fft / sr, pLo = hzFromFrac(1 - (y + 1) / IMG_H, nyq, log) * fft / sr;
+      if (pHi - pLo >= 1) { mode[y] = 1; A[y] = Math.max(0, Math.ceil(pLo)); B[y] = Math.min(bins - 1, Math.floor(pHi)); }
+      else { const c = (pLo + pHi) / 2, b0 = Math.max(0, Math.min(bins - 1, Math.floor(c))); A[y] = b0; B[y] = Math.min(bins - 1, b0 + 1); F[y] = Math.max(0, Math.min(1, c - b0)); }
+    }
+    return { mode, A, B, F };
+  }
+  function rowValue(x, y) {
+    const base = x * specMeta.bins, r = specRows;
+    if (r.mode[y]) { let m = -Infinity; for (let k = r.A[y]; k <= r.B[y]; k++) { const v = specDb[base + k]; if (v > m) m = v; } return m; }
+    return specDb[base + r.A[y]] * (1 - r.F[y]) + specDb[base + r.B[y]] * r.F[y];
+  }
+  function renderSpectrogramImage() {
+    if (!specDb || !specMeta) return;
+    const { cols } = specMeta;
+    specRows = buildRowMap();
+    if (!specImage || specImage.width !== cols || specImage.height !== IMG_H) { specImage = document.createElement("canvas"); specImage.width = cols; specImage.height = IMG_H; }
+    const ctx = specImage.getContext("2d"), img = ctx.createImageData(cols, IMG_H), data = img.data;
+    const palette = COLORS[$("paletteSelect").value] || COLORS.violet, lut = new Uint8Array(768);
+    for (let i = 0; i < 256; i++) { const c = interpColor(i / 255, palette); lut[i * 3] = c[0]; lut[i * 3 + 1] = c[1]; lut[i * 3 + 2] = c[2]; }
+    const floor = spec.floor, k = 255 / Math.max(1, spec.ceil - spec.floor);
+    for (let y = 0; y < IMG_H; y++) for (let x = 0; x < cols; x++) {
+      let i = Math.round((rowValue(x, y) - floor) * k); i = i < 0 ? 0 : i > 255 ? 255 : i;
+      const p = (y * cols + x) * 4; data[p] = lut[i * 3]; data[p + 1] = lut[i * 3 + 1]; data[p + 2] = lut[i * 3 + 2]; data[p + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  function updateSpecInfo() {
+    const el = $("specInfo"); if (!el) return;
+    if (!specMeta) { el.textContent = "—"; return; }
+    const { sr, fft, stride, cols, capped } = specMeta;
+    const overlap = Math.max(0, Math.round((1 - stride / fft) * 100));
+    el.innerHTML = `Δf ${(sr / fft).toFixed(1)} Hz · Δt ${(stride / sr * 1000).toFixed(1)} ms · ${overlap}% overlap` +
+      (capped ? `<br>Long file: ${cols} evenly spaced frames (effective hop ${Math.round(stride).toLocaleString()} samples)` : "");
+  }
+  async function recomputeSpectrogram(label) {
+    if (!decodedBuffer) return false;
+    const token = ++specToken, overlay = $("spectrogramOverlay");
+    overlay.classList.remove("hidden");
+    overlay.querySelector("span").textContent = `${label} 0%`;
+    await new Promise(r => setTimeout(r, 20));
+    const ok = await computeSpectrogram(decodedBuffer, token, label);
+    if (!ok) return false;
+    renderSpectrogramImage(); updateSpecInfo(); drawSpectrogram();
+    overlay.classList.add("hidden");
+    return true;
+  }
+  let recolorQueued = false;
+  function queueRecolor() {
+    if (recolorQueued) return; recolorQueued = true;
+    requestAnimationFrame(() => { recolorQueued = false; if (!specDb) return; renderSpectrogramImage(); drawSpectrogram(); });
+  }
+  // ---- Axes -------------------------------------------------------------
+  function frequencyTickList(plotH) {
+    const sr = specMeta ? specMeta.sr : (decodedBuffer ? decodedBuffer.sampleRate : 48000), nyq = sr / 2, log = isLogScale(nyq);
+    let freqs = [];
+    if (log) freqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 40000].filter(f => f <= nyq * 1.001);
+    else { const steps = [100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000]; const step = steps.find(s => s / nyq * plotH >= 24) || 20000; for (let f = 0; f <= nyq * 1.001; f += step) freqs.push(f); }
+    const out = []; let lastY = Infinity;
+    for (const f of freqs) { const frac = fracFromHz(f, nyq, log), y = (1 - frac) * plotH; if (lastY - y >= 15) { out.push({ f, frac }); lastY = y; } }
+    return { ticks: out, nyq, log };
+  }
+  function renderFrequencyAxis(plotH) {
+    const { ticks, nyq, log } = frequencyTickList(plotH), key = `${log}|${nyq}|${Math.round(plotH)}`;
+    if (key !== freqAxisKey) {
+      freqAxisKey = key;
+      const box = $("frequencyTicks"); box.innerHTML = "";
+      ticks.forEach(({ f, frac }) => { const s = document.createElement("span"); s.textContent = formatHz(f); s.style.top = `${(1 - frac) * 100}%`; box.appendChild(s); });
+      $("frequencyAxisTitle").textContent = log ? "FREQUENCY (Hz · LOG)" : "FREQUENCY (Hz · LINEAR)";
+    }
+    return ticks;
+  }
+  const AMP_TICKS = [1, 0.5, 0, -0.5, -1];
+  function renderAmplitudeAxis() {
+    const box = $("amplitudeTicks"); if (!box) return; box.innerHTML = "";
+    AMP_TICKS.forEach(a => { const s = document.createElement("span"); s.textContent = a === 0 ? "0" : `${a > 0 ? "+" : "−"}${Math.abs(a).toFixed(1)}`; if (a === 0) s.className = "zero"; s.style.top = `${(0.5 - a * AMP_K) * 100}%`; box.appendChild(s); });
+  }
+  // ---- Cursor readout ---------------------------------------------------
+  function setReadout(t, f, d) { $("curTime").textContent = t; $("curFreq").textContent = f; $("curDb").textContent = d; $("cursorReadout").classList.toggle("idle", t === "—"); }
+  function updateSpecCursor(event) {
+    if (!specDb || !specRows || !duration) return;
+    const rect = specCanvas.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left)), y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+    specCursor = { x, y };
+    const nyq = specMeta.sr / 2, log = isLogScale(nyq), ratio = x / rect.width;
+    const col = Math.min(specMeta.cols - 1, Math.floor(ratio * specMeta.cols)), row = Math.min(IMG_H - 1, Math.floor(y / rect.height * IMG_H));
+    const level = rowValue(col, row);
+    setReadout(formatTimePrecise(ratio * duration), formatHz(hzFromFrac(1 - y / rect.height, nyq, log), true), level <= -199 ? "−∞ dB" : `${level.toFixed(1).replace("-", "−")} dB`);
+    drawSpectrogram();
+  }
+  function clearSpecCursor() { specCursor = null; setReadout("—", "—", "—"); drawSpectrogram(); }
   function buildWaveform(buffer) {
     const data = buffer.getChannelData(0);
     const points = Math.min(5000, Math.max(1000, Math.ceil(data.length / 256)));
@@ -345,8 +400,11 @@
     specCtx.fillStyle = "#0a1020"; specCtx.fillRect(0, 0, w, h);
     specCtx.imageSmoothingEnabled = false;
     specCtx.drawImage(specImage, 0, 0, w, h);
-    // Subtle time grid.
-    specCtx.strokeStyle = "rgba(225,232,255,.12)"; specCtx.lineWidth = 1;
+    // Frequency grid (matches the axis labels) and a subtle time grid.
+    const ticks = renderFrequencyAxis(h);
+    specCtx.strokeStyle = "rgba(225,232,255,.13)"; specCtx.lineWidth = 1;
+    ticks.forEach(({ frac }) => { const y = Math.min(h - .5, Math.max(.5, Math.round((1 - frac) * h) + .5)); specCtx.beginPath(); specCtx.moveTo(0, y); specCtx.lineTo(w, y); specCtx.stroke(); });
+    specCtx.strokeStyle = "rgba(225,232,255,.10)";
     for (let i = 1; i < 8; i++) { const x = Math.round(w * i / 8) + .5; specCtx.beginPath(); specCtx.moveTo(x, 0); specCtx.lineTo(x, h); specCtx.stroke(); }
     if (duration > 0) {
       const x = Math.max(0, Math.min(w, playhead * w));
@@ -354,25 +412,33 @@
       specCtx.strokeStyle = "#f7f5ff"; specCtx.lineWidth = 1.5; specCtx.beginPath(); specCtx.moveTo(x + .5, 0); specCtx.lineTo(x + .5, h); specCtx.stroke();
       specCtx.fillStyle = "#fff"; specCtx.beginPath(); specCtx.moveTo(x - 4, 0); specCtx.lineTo(x + 4, 0); specCtx.lineTo(x, 6); specCtx.fill();
     }
+    if (specCursor) {
+      const cx = Math.min(w - .5, specCursor.x + .5), cy = Math.min(h - .5, specCursor.y + .5);
+      specCtx.save(); specCtx.setLineDash([4, 3]); specCtx.strokeStyle = "rgba(255,255,255,.7)"; specCtx.lineWidth = 1;
+      specCtx.beginPath(); specCtx.moveTo(cx, 0); specCtx.lineTo(cx, h); specCtx.moveTo(0, cy); specCtx.lineTo(w, cy); specCtx.stroke(); specCtx.restore();
+    }
   }
   function drawWaveform() {
     const { w, h } = resizeCanvas(waveCanvas, waveCtx);
     waveCtx.clearRect(0, 0, w, h);
     waveCtx.fillStyle = "#0a1020"; waveCtx.fillRect(0, 0, w, h);
-    const mid = h / 2;
-    waveCtx.strokeStyle = "rgba(143,158,195,.15)"; waveCtx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) { const y = i * h / 4 + .5; waveCtx.beginPath(); waveCtx.moveTo(0, y); waveCtx.lineTo(w, y); waveCtx.stroke(); }
-    waveCtx.strokeStyle = "rgba(156,142,255,.35)"; waveCtx.beginPath(); waveCtx.moveTo(0, mid + .5); waveCtx.lineTo(w, mid + .5); waveCtx.stroke();
+    const mid = h / 2, amp = h * AMP_K;
+    // Grid lines sit exactly on the Y-axis ticks (+1, +0.5, 0, −0.5, −1).
+    waveCtx.lineWidth = 1;
+    AMP_TICKS.forEach(a => {
+      const y = Math.round(mid - a * amp) + .5;
+      waveCtx.strokeStyle = a === 0 ? "rgba(156,142,255,.4)" : "rgba(143,158,195,.16)";
+      waveCtx.beginPath(); waveCtx.moveTo(0, y); waveCtx.lineTo(w, y); waveCtx.stroke();
+    });
     if (wavePeaks) {
-      const count = wavePeaks.length / 2;
-      const step = w / count;
+      const count = wavePeaks.length / 2, step = w / count;
       waveCtx.lineWidth = Math.max(1, step * .8);
       waveCtx.strokeStyle = "#9b8cff";
       waveCtx.beginPath();
       for (let i = 0; i < count; i++) {
         const x = i * step;
-        waveCtx.moveTo(x, mid - wavePeaks[i * 2 + 1] * (h * .43));
-        waveCtx.lineTo(x, mid - wavePeaks[i * 2] * (h * .43));
+        waveCtx.moveTo(x, mid - wavePeaks[i * 2 + 1] * amp);
+        waveCtx.lineTo(x, mid - wavePeaks[i * 2] * amp);
       }
       waveCtx.stroke();
       const x = Math.max(0, Math.min(w, playhead * w));
@@ -382,11 +448,9 @@
     }
   }
   function updateAxisLabels() {
-    const labels = document.querySelectorAll(".time-axis");
-    labels.forEach(axis => {
+    document.querySelectorAll(".time-axis").forEach(axis => {
       axis.innerHTML = `<span>00:00</span><span>TIME →</span><span>${formatTime(duration, false)}</span>`;
     });
-    $("frequencyTicks")?.remove();
   }
   function updateAudioProperties(buffer) {
     const channelCount = buffer.numberOfChannels;
@@ -651,6 +715,7 @@
     }
     if (rendering) showToast("Preparing audio…");
     currentFile = file;
+    specToken++; // abandon any in-flight spectrogram for the previous file
     currentAudioInvalid = file.size === 0;
     updatePlaylistUI();
     dropZone.classList.add("hidden");
@@ -680,9 +745,7 @@
       $("waveformOverlay").classList.add("hidden");
       // Yield to browser before CPU-bound spectrogram computation.
       await new Promise(resolve => setTimeout(resolve, 40));
-      buildSpectrogramFast(decodedBuffer);
-      drawSpectrogram();
-      $("spectrogramOverlay").classList.add("hidden");
+      await recomputeSpectrogram("Generating spectrogram…");
       updateAxisLabels();
       updateSeekUI();
       setPlayingState(false);
@@ -829,20 +892,34 @@
   audio.addEventListener("ended", () => { setPlayingState(false); updateSeekUI(); });
   specCanvas.addEventListener("pointerdown", e => seekFromCanvas(e, specCanvas));
   waveCanvas.addEventListener("pointerdown", e => seekFromCanvas(e, waveCanvas));
-  $("frequencyScale").addEventListener("change", async () => {
-    if (!decodedBuffer || rendering) return;
-    rendering = true; $("spectrogramOverlay").classList.remove("hidden");
-    $("spectrogramOverlay").querySelector("span").textContent = "Updating frequency scale…";
-    await new Promise(resolve => setTimeout(resolve, 20));
-    buildSpectrogramFast(decodedBuffer); drawSpectrogram(); $("spectrogramOverlay").classList.add("hidden"); rendering = false;
+  // ---- Spectrogram settings -------------------------------------------------
+  const dbText = v => `${String(v).replace("-", "−")} dB`;
+  function syncDbOutputs() { $("dbFloorOut").textContent = dbText(spec.floor); $("dbCeilOut").textContent = dbText(spec.ceil); }
+  function onDbInput(which) {
+    let f = Number($("dbFloor").value), c = Number($("dbCeil").value);
+    if (which === "floor" && f > c - 6) c = f + 6;
+    if (which === "ceil" && c < f + 6) f = c - 6;
+    $("dbFloor").value = f; $("dbCeil").value = c; spec.floor = f; spec.ceil = c;
+    syncDbOutputs(); queueRecolor();
+  }
+  $("dbFloor").addEventListener("input", () => onDbInput("floor"));
+  $("dbCeil").addEventListener("input", () => onDbInput("ceil"));
+  ["fftSizeSelect", "hopSelect", "windowSelect"].forEach(id => $(id).addEventListener("change", () => {
+    spec.fft = Number($("fftSizeSelect").value); spec.hop = Number($("hopSelect").value); spec.win = $("windowSelect").value;
+    recomputeSpectrogram("Recomputing spectrogram…");
+  }));
+  $("specReset").addEventListener("click", () => {
+    Object.assign(spec, SPEC_DEFAULTS);
+    $("fftSizeSelect").value = String(spec.fft); $("hopSelect").value = String(spec.hop); $("windowSelect").value = spec.win;
+    $("dbFloor").value = spec.floor; $("dbCeil").value = spec.ceil; syncDbOutputs();
+    $("frequencyScale").value = "log"; $("paletteSelect").value = "violet";
+    recomputeSpectrogram("Recomputing spectrogram…");
   });
-  $("paletteSelect").addEventListener("change", async () => {
-    if (!decodedBuffer || rendering) return;
-    rendering = true; $("spectrogramOverlay").classList.remove("hidden");
-    $("spectrogramOverlay").querySelector("span").textContent = "Updating palette…";
-    await new Promise(resolve => setTimeout(resolve, 20));
-    buildSpectrogramFast(decodedBuffer); drawSpectrogram(); $("spectrogramOverlay").classList.add("hidden"); rendering = false;
-  });
+  $("frequencyScale").addEventListener("change", () => { freqAxisKey = ""; queueRecolor(); });
+  $("paletteSelect").addEventListener("change", queueRecolor);
+  specCanvas.addEventListener("pointermove", updateSpecCursor);
+  specCanvas.addEventListener("pointerleave", clearSpecCursor);
+  syncDbOutputs(); renderAmplitudeAxis();
   window.addEventListener("resize", () => { if (decodedBuffer) { drawSpectrogram(); drawWaveform(); } });
   document.addEventListener("keydown", e => {
     if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName) || document.querySelector("dialog[open]")) return;

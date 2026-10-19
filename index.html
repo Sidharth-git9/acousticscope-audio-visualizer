@@ -1,9 +1,13 @@
 <!DOCTYPE html>
+<!-- AcousticScope — Created by Sidharth Subrahmanya H · Idea by Mr. Shanmukharaja M -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1020" />
+  <meta name="author" content="Sidharth Subrahmanya H" />
+  <meta name="description" content="AcousticScope — browser-based audio visual analyzer. Created by Sidharth Subrahmanya H. Idea by Mr. Shanmukharaja M." />
+  <meta name="creator" content="Created by Sidharth Subrahmanya H; Idea by Mr. Shanmukharaja M" />
   <title>AcousticScope — Audio Visual Analyzer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,7 +24,7 @@
     <header class="topbar">
       <a class="brand" href="#" aria-label="AcousticScope home">
         <span class="brand-mark"><span></span><span></span><span></span><span></span></span>
-        <span>Audio<span class="brand-light">Scope</span></span>
+        <span>Acoustic<span class="brand-light">Scope</span></span>
       </a>
       <div class="topbar-right">
         <span class="local-badge"><span class="status-dot"></span> LOCAL PROCESSING</span>
@@ -123,7 +127,7 @@
               <select id="trackSelect" class="track-select" aria-label="Select audio file" disabled><option value="">Choose a folder first</option></select>
             </div>
             <div class="track-nav" aria-label="Recording navigation"><button class="secondary-button compact-button" id="previousTrack" type="button" disabled aria-label="Previous audio">← Prev</button><button class="secondary-button compact-button" id="nextTrack" type="button" disabled aria-label="Next audio">Next →</button></div>
-            <button class="danger-button compact-button hidden" id="deleteTrack" type="button">Delete file only</button>
+            <button class="danger-button compact-button hidden" id="deleteTrack" type="button">Delete file</button>
           </div>
           <div class="cleanup-tools"><span class="cleanup-copy"><strong>Bulk delete</strong></span><div class="cleanup-actions"><button class="danger-button compact-button" id="deleteInvalidFiles" type="button" disabled>Delete invalid files</button><button class="danger-button compact-button" id="deleteEmptyFolders" type="button" disabled>Delete empty subfolders</button></div></div>
         </section>
@@ -135,14 +139,29 @@
               <label class="select-wrap"><span>Palette</span><select id="paletteSelect"><option value="violet">Violet</option><option value="thermal">Thermal</option><option value="mono">Monochrome</option></select></label>
             </div>
           </div>
+          <div class="spec-settings" id="spectrogramSettings" role="group" aria-label="Spectrogram settings">
+            <label class="set-field"><span>FFT size</span>
+              <select id="fftSizeSelect"><option value="256">256</option><option value="512">512</option><option value="1024">1024</option><option value="2048" selected>2048</option><option value="4096">4096</option><option value="8192">8192</option></select></label>
+            <label class="set-field"><span>Hop (samples)</span>
+              <select id="hopSelect"><option value="64">64</option><option value="128">128</option><option value="256">256</option><option value="512" selected>512</option><option value="1024">1024</option><option value="2048">2048</option><option value="4096">4096</option></select></label>
+            <label class="set-field"><span>Window</span>
+              <select id="windowSelect"><option value="hann" selected>Hann</option><option value="hamming">Hamming</option><option value="blackman">Blackman</option><option value="blackmanharris">Blackman-Harris</option><option value="bartlett">Triangular</option><option value="rect">Rectangular</option></select></label>
+            <label class="set-field range-field"><span>dB floor <output id="dbFloorOut">−70 dB</output></span>
+              <input id="dbFloor" class="range" type="range" min="-140" max="-20" step="1" value="-70" /></label>
+            <label class="set-field range-field"><span>dB ceiling <output id="dbCeilOut">0 dB</output></span>
+              <input id="dbCeil" class="range" type="range" min="-60" max="20" step="1" value="0" /></label>
+            <button class="secondary-button compact-button" id="specReset" type="button">Reset</button>
+            <span class="spec-info" id="specInfo">—</span>
+          </div>
           <div class="visual-stage spectrogram-stage" id="spectrogramStage">
-            <div class="axis-label axis-top">FREQUENCY</div>
-            <div class="frequency-ticks"><span>20 kHz</span><span>5 kHz</span><span>1 kHz</span><span>200 Hz</span><span>20 Hz</span></div>
+            <div class="axis-title" aria-hidden="true"><span id="frequencyAxisTitle">FREQUENCY (Hz)</span></div>
+            <div class="axis-ticks" id="frequencyTicks" aria-hidden="true"></div>
             <canvas id="spectrogramCanvas" aria-label="Interactive audio spectrogram. Click to seek."></canvas>
             <div class="canvas-overlay" id="spectrogramOverlay"><span>Load an audio file to generate its spectrogram</span></div>
+            <div class="cursor-readout" id="cursorReadout" aria-live="off"><span>Time <b id="curTime">—</b></span><span>Freq <b id="curFreq">—</b></span><span>Level <b id="curDb">—</b></span></div>
             <div class="time-axis" id="spectrogramTimeAxis"><span>00:00</span><span>TIME →</span><span>END</span></div>
           </div>
-          <div class="panel-foot"><span><span class="legend-gradient"></span> Low energy <span class="legend-bright"></span> High energy</span><span>Click anywhere on the visualization to seek</span></div>
+          <div class="panel-foot"><span><span class="legend-gradient"></span> Low energy <span class="legend-bright"></span> High energy</span><span>Hover for time / frequency / level · click anywhere to seek</span></div>
         </section>
 
         <section class="visual-panel panel" id="waveformPanel">
@@ -151,13 +170,13 @@
             <div class="wave-legend"><span></span> Amplitude</div>
           </div>
           <div class="visual-stage waveform-stage" id="waveformStage">
-            <div class="axis-label axis-top">AMPLITUDE</div>
-            <div class="amplitude-ticks"><span>+1.0</span><span>0</span><span>−1.0</span></div>
+            <div class="axis-title" aria-hidden="true"><span>AMPLITUDE (NORMALIZED)</span></div>
+            <div class="axis-ticks" id="amplitudeTicks" aria-hidden="true"></div>
             <canvas id="waveformCanvas" aria-label="Interactive audio waveform. Click to seek."></canvas>
             <div class="canvas-overlay" id="waveformOverlay"><span>Waveform will appear here</span></div>
             <div class="time-axis" id="waveformTimeAxis"><span>00:00</span><span>TIME →</span><span>END</span></div>
           </div>
-          <div class="panel-foot"><span>Peak amplitude view</span><span>Click anywhere on the visualization to seek</span></div>
+          <div class="panel-foot"><span>Peak amplitude view · Y axis: normalized amplitude (full scale = ±1.0)</span><span>Click anywhere on the visualization to seek</span></div>
         </section>
 
       </section>
@@ -165,16 +184,17 @@
         <div class="empty-orbit"><div class="orbit-dot"></div><div class="orbit-core">A</div></div>
         <p class="eyebrow">READY WHEN YOU ARE</p>
         <p>Your audio stays on your device. Load a file to begin exploring its structure.</p>
+        <p class="empty-credit">Created by Sidharth Subrahmanya H · Idea by Mr. Shanmukharaja M</p>
       </section>
     </main>
-    <footer><span>AcousticScope <span class="footer-muted">/ Browser-based audio analysis</span><span class="creator-credit">Created by Sidharth Subrahmanya H</span></span><span>DESIGNED FOR FOCUSED LISTENING</span></footer>
+    <footer><span>AcousticScope <span class="footer-muted">/ Browser-based audio analysis</span><span class="creator-credit">Created by Sidharth Subrahmanya H <span class="credit-sep">·</span> Idea by Mr. Shanmukharaja M</span></span><span>DESIGNED FOR FOCUSED LISTENING</span></footer>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <dialog id="aboutDialog">
     <div class="dialog-head"><strong>About AcousticScope</strong><button class="icon-button" id="closeAbout" aria-label="Close">×</button></div>
     <p>AcousticScope is a browser-based audio inspection workspace. Playback, waveform rendering, and spectrogram generation run locally on your device.</p>
     <p>For very long recordings, rendering may take a moment. Supported formats depend on the browser’s audio decoder.</p>
-    <p class="about-credit">Created by <strong>Sidharth Subrahmanya H</strong>.</p>
+    <p class="about-credit">Created by <strong>Sidharth Subrahmanya H</strong>.<br>Idea by <strong>Mr. Shanmukharaja M</strong>.</p>
     <button class="primary-button dialog-close" id="closeAboutBottom">Got it</button>
   </dialog>
   <script src="script.js"></script>

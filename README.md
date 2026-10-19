@@ -2,7 +2,8 @@
 
 AcousticScope is a browser-based audio visualizer and analyzer with synchronized playback, spectrogram, waveform, folder playlist navigation, deletion controls, and audio-property estimates.
 
-**Created by Sidharth Subrahmanya H.**
+**Created by Sidharth Subrahmanya H.**  
+**Idea by Mr. Shanmukharaja M.**
 
 ## Run locally
 
@@ -19,3 +20,12 @@ Use **Choose audio folder**. On browsers supporting the File System Access API, 
 ## Audio properties
 
 Peak frequency and SNR are estimates. SNR uses short-time RMS comparison and is not a calibrated noise measurement.
+
+## Spectrogram controls
+
+FFT size, hop (in samples), window function (Hann, Hamming, Blackman, Blackman-Harris, Triangular, Rectangular), dB floor and dB ceiling are adjustable. Levels are shown in dBFS (a full-scale sine reads 0 dB). A frequency axis (log or linear) with grid lines is drawn at the left, and hovering shows the time, frequency and level under the cursor. Changing the dB range, palette or scale only re-colours the cached result; changing FFT size, hop or window recomputes it. For very long files at most 2400 evenly spaced frames are computed (the effective hop is shown next to the controls).
+
+## Credits
+
+Created by Sidharth Subrahmanya H.
+Idea by Mr. Shanmukharaja M.

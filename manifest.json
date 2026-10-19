@@ -1,7 +1,9 @@
 {
   "name": "AcousticScope",
   "short_name": "AcousticScope",
-  "description": "Offline audio player with synchronized spectrogram and waveform analysis.",
+  "description": "Offline audio player with synchronized spectrogram and waveform analysis. Created by Sidharth Subrahmanya H. Idea by Mr. Shanmukharaja M.",
+  "author": "Sidharth Subrahmanya H",
+  "creator_credit": "Created by Sidharth Subrahmanya H; Idea by Mr. Shanmukharaja M",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
