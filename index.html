@@ -129,7 +129,7 @@
             <div class="track-nav" aria-label="Recording navigation"><button class="secondary-button compact-button" id="previousTrack" type="button" disabled aria-label="Previous audio">← Prev</button><button class="secondary-button compact-button" id="nextTrack" type="button" disabled aria-label="Next audio">Next →</button></div>
             <button class="danger-button compact-button hidden" id="deleteTrack" type="button">Delete file</button>
           </div>
-          <div class="cleanup-tools"><span class="cleanup-copy"><strong>Bulk delete</strong></span><div class="cleanup-actions"><button class="danger-button compact-button" id="deleteInvalidFiles" type="button" disabled>Delete invalid files</button><button class="danger-button compact-button" id="deleteEmptyFolders" type="button" disabled>Delete empty subfolders</button></div></div>
+          <div class="cleanup-tools"><span class="cleanup-copy"><strong>Bulk delete</strong></span><div class="cleanup-actions"><div class="cleanup-stack"><button class="danger-button compact-button" id="deleteInvalidFiles" type="button" disabled>Delete invalid files</button><button class="secondary-button compact-button" id="groupInvalidFiles" type="button" disabled title="Move invalid files into the “Invallid_files” subfolder of the opened folder">Group invalid files</button></div><button class="danger-button compact-button" id="deleteEmptyFolders" type="button" disabled>Delete empty subfolders</button></div></div>
         </section>
         <section class="visual-panel panel" id="spectrogramPanel">
           <div class="section-heading visual-heading">

@@ -116,7 +116,7 @@
     const singleMode = hasPlaylist && playlistSource === "files" && playlist.length === 1;
     if (singleMode) {
       invalidAudioFiles = [];
-      [subfolderSelect, trackSelect, previousTrackButton, nextTrackButton, $("deleteInvalidFiles"), $("deleteEmptyFolders")].forEach(el => { if (el) el.disabled = true; });
+      [subfolderSelect, trackSelect, previousTrackButton, nextTrackButton, $("deleteInvalidFiles"), $("groupInvalidFiles"), $("deleteEmptyFolders")].forEach(el => { if (el) el.disabled = true; });
     }
     if (deleteButton) {
       const showDelete = canDeleteInvalidFromDisk || singleMode;
@@ -571,6 +571,16 @@
       }
     }
   }
+  const INVALID_FOLDER_NAME = "Invallid_files";
+  // Invalid files that are not already inside the "Invallid_files" subfolder.
+  function groupableInvalidFiles() {
+    return invalidAudioFiles.filter(item => !item.relativePath.startsWith(INVALID_FOLDER_NAME + "/"));
+  }
+  function updateGroupButton() {
+    const btn = $("groupInvalidFiles");
+    if (!btn) return;
+    btn.disabled = !(playlistSource === "directory" && !!directoryHandle && groupableInvalidFiles().length > 0);
+  }
   function updateCleanupUI() {
     const summary = $("cleanupSummary");
     if (summary) summary.textContent = `${invalidAudioFiles.length} invalid audio file(s) found in the selected folder and its subfolders.`;
@@ -584,7 +594,8 @@
     const invalidCount = $("invalidAudioCount");
     if (invalidCount) invalidCount.textContent = `${invalidAudioFiles.length} found`;
     $("deleteInvalidFiles").disabled = !invalidAudioFiles.length;
-      }
+    updateGroupButton();
+  }
   async function wavSilent(file) {
     const head = new Uint8Array(await file.slice(0, 65536).arrayBuffer());
     const dv = new DataView(head.buffer);
@@ -655,6 +666,7 @@
     const t = ++cleanupToken;
     const di = $("deleteInvalidFiles"), de = $("deleteEmptyFolders");
     if (di) di.disabled = true; if (de) de.disabled = true;
+    const dg = $("groupInvalidFiles"); if (dg) dg.disabled = true;
     if (!directoryHandle) return;
     try { const dirs = []; await findEmptyDirs(directoryHandle, "", dirs); if (t === cleanupToken && de) de.disabled = !dirs.length; } catch (e) {}
     await runInvalidScan(true);
@@ -681,6 +693,61 @@
     if (playlistIndex >= 0) await loadPlaylistTrack(playlistIndex);
     showToast(`Deleted ${removed} of ${count} invalid audio file(s).`);
     refreshCleanupState();
+  });
+
+  // Cut invalid files from where they are and paste them into <input folder>/Invallid_files
+  async function uniqueFileName(dir, name) {
+    const dot = name.lastIndexOf(".");
+    const base = dot > 0 ? name.slice(0, dot) : name;
+    const ext = dot > 0 ? name.slice(dot) : "";
+    let candidate = name, n = 1;
+    while (true) {
+      try { await dir.getFileHandle(candidate); candidate = `${base} (${n++})${ext}`; }
+      catch (err) { if (err && err.name === "NotFoundError") return candidate; throw err; }
+    }
+  }
+  $("groupInvalidFiles")?.addEventListener("click", async () => {
+    if (!directoryHandle) return;
+    const btn = $("groupInvalidFiles");
+    btn.disabled = true;
+    try {
+      await runInvalidScan(true);
+      const items = groupableInvalidFiles();
+      if (!items.length) { showToast("No invalid audio files to group."); updateGroupButton(); return; }
+      if (!confirm(`Move ${items.length} invalid audio file(s) into the “${INVALID_FOLDER_NAME}” subfolder of the opened folder?`)) { updateGroupButton(); return; }
+      const targetDir = await directoryHandle.getDirectoryHandle(INVALID_FOLDER_NAME, { create: true });
+      let moved = 0;
+      for (const item of items) {
+        try {
+          const file = await item.handle.getFile();
+          const newName = await uniqueFileName(targetDir, item.name);
+          const newHandle = await targetDir.getFileHandle(newName, { create: true });
+          const writable = await newHandle.createWritable();
+          try { await writable.write(file); await writable.close(); }
+          catch (writeErr) { try { await writable.abort(); } catch (e) {} throw writeErr; }
+          // Remove the original only after the copy was written successfully (cut + paste)
+          await item.parentHandle.removeEntry(item.name);
+          moved++;
+        } catch (err) { console.warn("Could not move invalid audio", item.relativePath, err); }
+      }
+      // Rebuild the playlist from disk so paths reflect the new location
+      const currentPath = entryPath(playlistIndex);
+      const result = await walkDirectory(directoryHandle);
+      playlistEntries = result.files.sort((a, b) => a.relativePath.localeCompare(b.relativePath, undefined, { numeric: true, sensitivity: "base" }));
+      playlist = playlistEntries.map(item => item.file);
+      invalidAudioFiles = [];
+      let idx = playlistEntries.findIndex(item => item.relativePath === currentPath);
+      if (idx < 0) idx = playlist.length ? Math.min(Math.max(playlistIndex, 0), playlist.length - 1) : -1;
+      playlistIndex = idx;
+      updateCleanupUI(); updatePlaylistUI();
+      if (playlistIndex >= 0) await loadPlaylistTrack(playlistIndex);
+      showToast(`Moved ${moved} of ${items.length} invalid audio file(s) to “${INVALID_FOLDER_NAME}”.`);
+      refreshCleanupState();
+    } catch (err) {
+      console.error(err);
+      showToast("Could not group invalid files. Check folder permissions.");
+      refreshCleanupState();
+    }
   });
 
   async function findEmptyDirs(dirHandle, path = "", out = []) {

@@ -412,3 +412,9 @@ footer .credit-sep{color:#9aa4b2}
   .folder-manager .cleanup-actions{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:8px}
   .folder-manager .cleanup-actions button{width:100%}
 }
+
+/* Group invalid files button (stacked below "Delete invalid files") */
+.cleanup-actions{align-items:flex-start}
+.cleanup-stack{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.cleanup-stack button{white-space:nowrap}
+@media (max-width: 680px) { .cleanup-stack{width:100%} .cleanup-stack button{width:100%} }
