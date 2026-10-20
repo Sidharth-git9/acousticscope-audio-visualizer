@@ -452,6 +452,33 @@
       axis.innerHTML = `<span>00:00</span><span>TIME →</span><span>${formatTime(duration, false)}</span>`;
     });
   }
+  // Invalid-audio thresholds: a file is invalid only when ALL three conditions hold.
+  const INVALID_PEAK_DBFS = -20.0; // peak amplitude below this (dBFS)
+  const INVALID_RMS_DBFS = -40.0;  // RMS level below this (dBFS)
+  const INVALID_SNR_DB = 3.0;      // estimated SNR below this (dB)
+  const toDbfs = v => v <= 0 ? -Infinity : 20 * Math.log10(v);
+  // Estimated SNR (dB) from louder (90th pct) vs quieter (10th pct) 100 ms RMS windows.
+  // Returns null when it cannot be estimated.
+  function estimateSnrDb(mono, sampleRate) {
+    const frameSize = Math.max(1, Math.floor(sampleRate * 0.1));
+    const levels = [];
+    for (let start = 0; start < mono.length; start += frameSize) {
+      let sum = 0; const n = Math.min(frameSize, mono.length - start);
+      for (let i = 0; i < n; i++) sum += mono[start + i] * mono[start + i];
+      const level = Math.sqrt(sum / Math.max(1, n));
+      if (level > 1e-7) levels.push(level);
+    }
+    if (levels.length <= 1) return null;
+    levels.sort((a, b) => a - b);
+    const quiet = levels[Math.floor((levels.length - 1) * 0.1)];
+    const loud = levels[Math.floor((levels.length - 1) * 0.9)];
+    return 20 * Math.log10(Math.max(loud, 1e-9) / Math.max(quiet, 1e-9));
+  }
+  // Invalid if peak < -20 dBFS AND rms < -40 dBFS AND snr < 3.0 dB.
+  // An SNR that cannot be estimated (no usable signal) counts as below the threshold.
+  function isInvalidSignal(peak, rms, snrDb) {
+    return toDbfs(peak) < INVALID_PEAK_DBFS && toDbfs(rms) < INVALID_RMS_DBFS && (snrDb === null || snrDb < INVALID_SNR_DB);
+  }
   function updateAudioProperties(buffer) {
     const channelCount = buffer.numberOfChannels;
     let peak = 0, sumSquares = 0, samples = 0;
@@ -467,21 +494,8 @@
     }
     const rms = Math.sqrt(sumSquares / Math.max(1, samples));
     const db = v => v <= 0 ? "−∞" : (20 * Math.log10(v)).toFixed(1);
-    const frameSize = Math.max(1, Math.floor(buffer.sampleRate * 0.1));
-    const levels = [];
-    for (let start = 0; start < mono.length; start += frameSize) {
-      let sum = 0; const n = Math.min(frameSize, mono.length - start);
-      for (let i = 0; i < n; i++) sum += mono[start + i] * mono[start + i];
-      const level = Math.sqrt(sum / Math.max(1, n));
-      if (level > 1e-7) levels.push(level);
-    }
-    let snr = "Not available";
-    if (levels.length > 1) {
-      levels.sort((a, b) => a - b);
-      const quiet = levels[Math.floor((levels.length - 1) * 0.1)];
-      const loud = levels[Math.floor((levels.length - 1) * 0.9)];
-      snr = `${(20 * Math.log10(Math.max(loud, 1e-9) / Math.max(quiet, 1e-9))).toFixed(1)} dB`;
-    }
+    const snrDb = estimateSnrDb(mono, buffer.sampleRate);
+    let snr = snrDb === null ? "Not available" : `${snrDb.toFixed(1)} dB`;
     // Find the strongest non-DC FFT bin in a bounded segment using a 2048-point DFT.
     const fftSize = Math.min(2048, 2 ** Math.floor(Math.log2(Math.max(2, mono.length))));
     let peakFrequency = "Not available";
@@ -510,9 +524,8 @@
     $("rmsLevel").textContent = `${rms.toFixed(6)} (${db(rms)} dBFS)`;
     $("propertySampleRate").textContent = `${(buffer.sampleRate / 1000).toFixed(1)} kHz`;
     $("propertyChannels").textContent = String(channelCount);
-    // Treat audio as empty-like only when every core signal indicator is absent/zero.
-    // SNR alone may be unavailable for valid short or steady recordings.
-    currentAudioInvalid = mono.length === 0 || (peak <= 1e-9 && rms <= 1e-9 && peakFrequency === "Not available" && snr === "Not available");
+    // Invalid when peak < -20 dBFS, RMS < -40 dBFS and SNR < 3.0 dB (all three).
+    currentAudioInvalid = mono.length === 0 || isInvalidSignal(peak, rms, snrDb);
     updatePlaylistUI();
   }
   async function walkDirectory(dirHandle, relativePath = "") {
@@ -601,7 +614,7 @@
       const result = await walkDirectory(directoryHandle);
       const scope = (subfolderSelect?.value || "").trim();
       const candidates = result.files.filter(item => isAudioFile(item.file) && (!scope || item.relativePath.startsWith(scope + "/")));
-      if (!quiet) showToast(`Checking ${candidates.length} audio files for zero signal…`);
+      if (!quiet) showToast(`Checking ${candidates.length} audio files for invalid signal…`);
       const delBtn = $("deleteInvalidFiles");
       let done = 0;
       for (const item of candidates) {
@@ -611,21 +624,24 @@
         if (/\.wav$/i.test(item.name)) {
           let silent = null;
           try { silent = await wavSilent(item.file); } catch (e) {}
-          if (silent !== null) { if (silent) found.push(item); continue; }
+          if (silent) { found.push(item); continue; } // all-zero samples are always invalid; otherwise apply the full rule below
         }
         try {
           const buffer = await decodeAudio(item.file);
           let peak = 0, sumSquares = 0, samples = 0;
-          for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+          const channels = buffer.numberOfChannels;
+          const mono = new Float32Array(buffer.length);
+          for (let channel = 0; channel < channels; channel++) {
             const data = buffer.getChannelData(channel);
             for (let i = 0; i < data.length; i++) {
               const value = Number.isFinite(data[i]) ? data[i] : 0;
               peak = Math.max(peak, Math.abs(value));
               sumSquares += value * value; samples++;
+              mono[i] += value / channels;
             }
           }
           const rms = Math.sqrt(sumSquares / Math.max(1, samples));
-          if (buffer.length > 0 && peak <= 1e-9 && rms <= 1e-9) found.push(item);
+          if (buffer.length > 0 && isInvalidSignal(peak, rms, estimateSnrDb(mono, buffer.sampleRate))) found.push(item);
         } catch (err) { console.warn("Could not decode during invalid-audio scan:", item.relativePath, err); }
       }
       if ((quiet && tk !== cleanupToken) || !directoryHandle) return;
