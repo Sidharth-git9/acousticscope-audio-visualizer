@@ -2,8 +2,8 @@
 
 AcousticScope is a browser-based audio visualizer and analyzer with synchronized playback, spectrogram, waveform, folder playlist navigation, deletion controls, and audio-property estimates.
 
-**Created by Sidharth Subrahmanya H.**  
-**Idea by Mr. Shanmukharaja M.**
+**Design and Develeopment by Sidharth Subrahmanya H.**  
+**and Mr. Shanmukharaja M.**
 
 ## Run locally
 
