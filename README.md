@@ -46,4 +46,4 @@ The copyright notice belongs in the files rather than in the LICENSE text. Apach
 
 ## Credits
 
-Design and Developemtn by Sidharth Subrahmanya H and Shanmukharaja M.
+Design and Developement by Sidharth Subrahmanya H and Shanmukharaja M.
